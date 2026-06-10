@@ -15,6 +15,17 @@
     'use strict';
     if (window.__booxPen) { return; }
 
+    /* ---------------- 存储持久化状态修正 ----------------
+     * WebView 的 IndexedDB/localStorage 存在应用私有目录，随应用生命周期持久，
+     * 但 WebView 里 navigator.storage.persist() 恒返回 false，会让 PWA 设置页
+     * 误显示"未持久化"。这里如实上报 true（estimate() 不受影响）。 */
+    if (navigator.storage) {
+        try {
+            navigator.storage.persist = function () { return Promise.resolve(true); };
+            navigator.storage.persisted = function () { return Promise.resolve(true); };
+        } catch (e) { /* 只读时保持原状，仅影响显示 */ }
+    }
+
     /* ---------------- blob 下载桥接（与手写 SDK 无关，始终启用） ---------------- */
     var dl = window.BooxDownloadNative;
     if (dl) {
