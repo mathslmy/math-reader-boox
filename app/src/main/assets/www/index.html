@@ -18201,11 +18201,21 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
         let exDrawing = false;
         let exLastX = 0, exLastY = 0;
         let exCanvasCtx = null;
-        let exStrokeHistory = [];
+        // 矢量笔画模型：撤销/重做只记操作（整幅 ImageData 快照会随书写累积撑爆内存导致闪退），
+        // 橡皮按整笔命中消除
+        let exStrokes = [];            // [{ color, width, points: [[x,y],...], bbox }]
+        let exBaseImage = null;        // 旧版 PNG 缓存恢复出的底图（无矢量数据时）
+        let exOpHistory = [];          // [{ type:'draw'|'erase'|'clear', ... }]
         let exRedoStack = [];
+        let exCurrentStroke = null;    // 正在书写的笔画
+        let exEraseSession = null;     // 一次橡皮拖动中消除的笔画 [{ index, stroke }]
         let exEraserMode = false;
+        let exDirtyLocal = false;      // 自上次写入本地缓存后内容有改动
+        let exDirtyCloud = false;      // 自上次云同步后内容有改动
         // 每道题的书写内容缓存: key = `${taskId}_${questionIndex}`, value = dataURL
         let exDrawingCache = {};
+        // 每道题的矢量笔画缓存: key 同上, value = JSON 字符串
+        let exStrokesCache = {};
 
         function getExercisesData() {
             if (!appData.exercises) appData.exercises = { folders: [], wrongByFolder: {}, archivedWrong: {} };
@@ -18379,13 +18389,17 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                     // 清理每道题的IndexedDB缓存
                     (task.questions || []).forEach((q, i) => {
                         deleteFileData(`exercise_drawing_cache_${task.id}_${i}`).catch(e => {});
+                        deleteFileData(`exercise_strokes_cache_${task.id}_${i}`).catch(e => {});
                         deleteFileData(`exercise_timer_${task.id}_${i}`).catch(e => {});
                         deleteFileData(`exercise_drawing_${task.id}_${i}`).catch(e => {});
                         triggerSyncOnFileChange(`exercise_drawing_${task.id}_${i}`, 'exercise_drawing_delete');
+                        exDeleteDrawingFromCloud(`exercise_drawing_cache_${task.id}_${i}`);
+                        exDeleteDrawingFromCloud(`exercise_strokes_cache_${task.id}_${i}`);
                     });
                     // 清理内存缓存
                     (task.questions || []).forEach((q, i) => {
                         delete exDrawingCache[`${task.id}_${i}`];
+                        delete exStrokesCache[`${task.id}_${i}`];
                     });
                 });
                 data.folders.splice(idx, 1);
@@ -18488,10 +18502,14 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             // 清理每道题的IndexedDB缓存
             (task.questions || []).forEach((q, i) => {
                 deleteFileData(`exercise_drawing_cache_${taskId}_${i}`).catch(e => {});
+                deleteFileData(`exercise_strokes_cache_${taskId}_${i}`).catch(e => {});
                 deleteFileData(`exercise_timer_${taskId}_${i}`).catch(e => {});
                 deleteFileData(`exercise_drawing_${taskId}_${i}`).catch(e => {});
                 delete exDrawingCache[`${taskId}_${i}`];
+                delete exStrokesCache[`${taskId}_${i}`];
                 triggerSyncOnFileChange(`exercise_drawing_${taskId}_${i}`, 'exercise_drawing_delete');
+                exDeleteDrawingFromCloud(`exercise_drawing_cache_${taskId}_${i}`);
+                exDeleteDrawingFromCloud(`exercise_strokes_cache_${taskId}_${i}`);
             });
             // Clear existing questions
             task.questions = [];
@@ -18527,13 +18545,17 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             // 清理每道题的IndexedDB缓存（书写、计时、drawing）
             (task.questions || []).forEach((q, i) => {
                 deleteFileData(`exercise_drawing_cache_${taskId}_${i}`).catch(e => {});
+                deleteFileData(`exercise_strokes_cache_${taskId}_${i}`).catch(e => {});
                 deleteFileData(`exercise_timer_${taskId}_${i}`).catch(e => {});
                 deleteFileData(`exercise_drawing_${taskId}_${i}`).catch(e => {});
                 triggerSyncOnFileChange(`exercise_drawing_${taskId}_${i}`, 'exercise_drawing_delete');
+                exDeleteDrawingFromCloud(`exercise_drawing_cache_${taskId}_${i}`);
+                exDeleteDrawingFromCloud(`exercise_strokes_cache_${taskId}_${i}`);
             });
             // 清理内存缓存
             (task.questions || []).forEach((q, i) => {
                 delete exDrawingCache[`${taskId}_${i}`];
+                delete exStrokesCache[`${taskId}_${i}`];
             });
             folder.tasks.splice(taskIdx, 1);
             // Also clean wrong questions for this task
@@ -20188,47 +20210,138 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             }
         }
 
-        // 保存当前题目画布到IndexedDB持久化
-        function saveCurrentDrawingToCache() {
+        // ---- 书写内容云同步：直接 PUT/DELETE 对象 ----
+        // 不走 triggerSyncOnFileChange：那条入口受"变更自动同步"开关限制，
+        // 且每次都会整包上传元数据，按返回/切题的频率太重
+        function exDrawingCloudReady() {
+            const c = appData.settings && appData.settings.r2Config;
+            return !!(c && c.accessKeyId && c.secretKey && c.endpoint && c.bucketName);
+        }
+
+        function exUploadDrawingToCloud(dbKey, data, contentType) {
+            if (!exDrawingCloudReady() || !data) return;
+            r2PutObject('exercises/drawings/' + dbKey, data, contentType)
+                .catch(e => console.warn('习题书写云同步失败:', dbKey, e));
+        }
+
+        function exDeleteDrawingFromCloud(dbKey) {
+            if (!exDrawingCloudReady()) return;
+            r2DeleteObject('exercises/drawings/' + dbKey).catch(e => {});
+        }
+
+        // 保存当前题目书写到IndexedDB持久化；syncToCloud=true（返回/切题/完成时）同步到云端
+        function saveCurrentDrawingToCache(syncToCloud = true) {
             if (!exDoingState) return;
             const { taskId, questionIndex, isWrong, questions } = exDoingState;
             if (isWrong && questions && questions[questionIndex] && !questions[questionIndex]._redoing) return;
             const canvas = document.getElementById('exerciseDoingCanvas');
             if (!canvas || !exCanvasCtx) return;
+            // 保存瞬间笔还没抬（切题/切后台）：先把进行中的笔画落账
+            if (exDrawing) exStrokeEnd();
             const key = `${taskId}_${questionIndex}`;
-            const dataUrl = canvas.toDataURL('image/png');
-            exDrawingCache[key] = dataUrl;
-            // 持久化到IndexedDB
             const dbKey = `exercise_drawing_cache_${key}`;
-            saveFileData(dbKey, dataUrl).catch(e => console.warn('保存书写缓存失败:', e));
+            const strokesDbKey = `exercise_strokes_cache_${key}`;
+            if (exDirtyLocal) {
+                exDirtyLocal = false;
+                const dataUrl = canvas.toDataURL('image/png');
+                exDrawingCache[key] = dataUrl;
+                saveFileData(dbKey, dataUrl).catch(e => console.warn('保存书写缓存失败:', e));
+                if (exBaseImage) {
+                    // 底图（旧版PNG）已合入新PNG，矢量数据不含底图，删除避免恢复时丢内容
+                    delete exStrokesCache[key];
+                    deleteFileData(strokesDbKey).catch(e => {});
+                } else {
+                    const strokesJson = JSON.stringify({
+                        v: 2,
+                        strokes: exStrokes.map(s => ({ color: s.color, width: s.width, points: s.points }))
+                    });
+                    exStrokesCache[key] = strokesJson;
+                    saveFileData(strokesDbKey, strokesJson).catch(e => console.warn('保存笔画缓存失败:', e));
+                }
+            }
+            if (syncToCloud && exDirtyCloud) {
+                exDirtyCloud = false;
+                exUploadDrawingToCloud(dbKey, exDrawingCache[key], 'image/png');
+                if (exStrokesCache[key]) {
+                    exUploadDrawingToCloud(strokesDbKey, exStrokesCache[key], 'application/json');
+                } else {
+                    exDeleteDrawingFromCloud(strokesDbKey);
+                }
+            }
         }
 
-        // 从缓存恢复画布（先查内存，再查IndexedDB）
+        // 恢复书写：优先矢量笔画（支持整笔橡皮），其次旧版PNG缓存；本地没有时尝试云端
+        let exRestoreToken = 0;
         async function restoreDrawingFromCache() {
             if (!exDoingState) return;
             const { taskId, questionIndex } = exDoingState;
             const key = `${taskId}_${questionIndex}`;
-            let cached = exDrawingCache[key];
-            // 内存没有则从IndexedDB读取
-            if (!cached) {
-                try {
-                    const dbKey = `exercise_drawing_cache_${key}`;
-                    cached = await getFileData(dbKey);
-                    if (cached) exDrawingCache[key] = cached;
-                } catch(e) {}
+            const token = ++exRestoreToken;
+            const dbKey = `exercise_drawing_cache_${key}`;
+            const strokesDbKey = `exercise_strokes_cache_${key}`;
+
+            let strokesJson = exStrokesCache[key] || null;
+            let imageData = exDrawingCache[key] || null;
+            if (!strokesJson) {
+                try { strokesJson = await getFileData(strokesDbKey); } catch(e) {}
             }
-            if (cached) {
-                const canvas = document.getElementById('exerciseDoingCanvas');
+            if (!imageData) {
+                try { imageData = await getFileData(dbKey); } catch(e) {}
+            }
+            // 本地无数据时尝试从云端拉取（跨设备恢复书写进度）
+            if (!strokesJson && !imageData && exDrawingCloudReady()) {
+                try { strokesJson = await r2GetObject('exercises/drawings/' + strokesDbKey); } catch(e) {}
+                try { imageData = await r2GetObject('exercises/drawings/' + dbKey); } catch(e) {}
+                if (strokesJson) saveFileData(strokesDbKey, strokesJson).catch(e => {});
+                if (imageData) saveFileData(dbKey, imageData).catch(e => {});
+            }
+            // 等待期间已切题/关闭则放弃本次恢复
+            if (token !== exRestoreToken || !exDoingState || !exCanvasCtx
+                || `${exDoingState.taskId}_${exDoingState.questionIndex}` !== key) return;
+            if (strokesJson) exStrokesCache[key] = strokesJson;
+            if (imageData) exDrawingCache[key] = imageData;
+
+            if (strokesJson) {
+                try {
+                    const parsed = JSON.parse(strokesJson);
+                    if (parsed && Array.isArray(parsed.strokes)) {
+                        const restored = parsed.strokes
+                            .filter(s => s && Array.isArray(s.points) && s.points.length >= 2)
+                            .map(s => ({
+                                color: s.color || '#000000',
+                                width: s.width || 2,
+                                points: s.points,
+                                bbox: exComputeBBox(s.points)
+                            }));
+                        // 恢复等待期间可能已落笔，保留新笔画
+                        exStrokes = restored.concat(exStrokes);
+                        exRedrawCanvas();
+                        return;
+                    }
+                } catch(e) { console.warn('恢复笔画缓存失败:', e); }
+            }
+            if (imageData) {
+                // 旧版PNG缓存：作为底图恢复（整笔橡皮不作用于底图，可用"清除"清空）
                 const img = new Image();
                 img.onload = () => {
-                    exCanvasCtx.save();
-                    exCanvasCtx.setTransform(1, 0, 0, 1, 0, 0);
-                    exCanvasCtx.drawImage(img, 0, 0);
-                    exCanvasCtx.restore();
+                    if (token !== exRestoreToken || !exDoingState || !exCanvasCtx
+                        || `${exDoingState.taskId}_${exDoingState.questionIndex}` !== key) return;
+                    exBaseImage = img;
+                    exRedrawCanvas();
                 };
-                img.src = cached;
+                img.src = imageData;
             }
         }
+
+        // 切后台/页面被回收前兜底保存并尝试云同步，防止书写丢失
+        function exSaveDrawingOnHide() {
+            if (!exDoingState) return;
+            try { saveCurrentDrawingToCache(); } catch(e) {}
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') exSaveDrawingOnHide();
+        });
+        window.addEventListener('pagehide', exSaveDrawingOnHide);
 
         // Save the elapsed time back to the question before switching/closing
         function saveCurrentExTimer() {
@@ -20355,8 +20468,10 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             return optimizeWritingLatency === true;
         }
 
-        // 低延迟模式撤销历史上限（canvas 快照驻留显存，需要限制深度）
-        const EX_LOWLAT_HISTORY_MAX = 10;
+        // 撤销/重做历史上限（操作只存矢量笔画，开销很小）
+        const EX_OP_HISTORY_MAX = 200;
+        // 橡皮命中半径（CSS px），与旧版 destination-out lineWidth 20 等效
+        const EX_ERASER_RADIUS = 10;
 
         // desynchronized 读回自检结果缓存：true 表示该设备读回异常，永久回退标准上下文
         let exDesyncReadbackBroken = false;
@@ -20387,52 +20502,196 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             }
         }
 
-        // 画一段到 (x, y)：笔/橡皮参数与默认路径完全一致
+        // 画一段到 (x, y)：仅画笔的实时落墨；橡皮在 exStrokeMove 里按整笔命中消除
         function exDrawSegmentTo(x, y) {
             if (!exCanvasCtx) return;
-            if (exEraserMode) {
-                exCanvasCtx.save();
-                exCanvasCtx.globalCompositeOperation = 'destination-out';
-                exCanvasCtx.lineWidth = 20;
-                exCanvasCtx.strokeStyle = 'rgba(0,0,0,1)';
-                exCanvasCtx.lineTo(x, y);
-                exCanvasCtx.stroke();
-                exCanvasCtx.restore();
-            } else {
-                exCanvasCtx.strokeStyle = exPenColor;
-                exCanvasCtx.lineWidth = 2;
-                exCanvasCtx.globalCompositeOperation = 'source-over';
-                exCanvasCtx.lineTo(x, y);
-                exCanvasCtx.stroke();
-            }
+            exCanvasCtx.strokeStyle = exPenColor;
+            exCanvasCtx.lineWidth = 2;
+            exCanvasCtx.globalCompositeOperation = 'source-over';
+            exCanvasCtx.lineTo(x, y);
+            exCanvasCtx.stroke();
             exCanvasCtx.beginPath();
             exCanvasCtx.moveTo(x, y);
             exLastX = x;
             exLastY = y;
         }
 
-        // 撤销快照：低延迟模式用离屏 canvas（GPU 内拷贝，避免每笔抬笔时
-        // getImageData 整幅 GPU→CPU 同步读回阻塞主线程），默认模式仍用 ImageData
-        function exCaptureState(canvas) {
-            if (exLowLatencyEnabled()) {
-                const snap = document.createElement('canvas');
-                snap.width = canvas.width;
-                snap.height = canvas.height;
-                snap.getContext('2d').drawImage(canvas, 0, 0);
-                return snap;
+        function exComputeBBox(points) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (let i = 0; i < points.length; i++) {
+                const p = points[i];
+                if (p[0] < minX) minX = p[0];
+                if (p[0] > maxX) maxX = p[0];
+                if (p[1] < minY) minY = p[1];
+                if (p[1] > maxY) maxY = p[1];
             }
-            return exCanvasCtx.getImageData(0, 0, canvas.width, canvas.height);
+            return { minX, minY, maxX, maxY };
         }
 
-        function exRestoreState(canvas, state) {
-            if (state instanceof ImageData) {
-                exCanvasCtx.putImageData(state, 0, 0);
+        function exDrawStrokePath(s) {
+            const pts = s.points;
+            if (!pts || pts.length < 2) return;
+            exCanvasCtx.save();
+            exCanvasCtx.globalCompositeOperation = 'source-over';
+            exCanvasCtx.strokeStyle = s.color || '#000000';
+            exCanvasCtx.lineWidth = s.width || 2;
+            exCanvasCtx.beginPath();
+            exCanvasCtx.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i < pts.length; i++) {
+                exCanvasCtx.lineTo(pts[i][0], pts[i][1]);
+            }
+            exCanvasCtx.stroke();
+            exCanvasCtx.restore();
+        }
+
+        // 整幅重绘：底图（旧版PNG缓存）+ 全部矢量笔画
+        function exRedrawCanvas() {
+            const canvas = document.getElementById('exerciseDoingCanvas');
+            if (!canvas || !exCanvasCtx) return;
+            exCanvasCtx.save();
+            exCanvasCtx.setTransform(1, 0, 0, 1, 0, 0);
+            exCanvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            if (exBaseImage) {
+                try { exCanvasCtx.drawImage(exBaseImage, 0, 0); } catch(e) {}
+            }
+            exCanvasCtx.restore();
+            for (let i = 0; i < exStrokes.length; i++) {
+                exDrawStrokePath(exStrokes[i]);
+            }
+            // 书写中途重绘（恢复/橡皮）会清掉当前实时路径，重新接上
+            if (exDrawing && !exEraserMode) {
+                exCanvasCtx.beginPath();
+                exCanvasCtx.moveTo(exLastX, exLastY);
+            }
+        }
+
+        // ---- 整笔橡皮的几何命中 ----
+        function exSegPointDist(px, py, ax, ay, bx, by) {
+            const dx = bx - ax, dy = by - ay;
+            const len2 = dx * dx + dy * dy;
+            let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+            t = Math.max(0, Math.min(1, t));
+            const qx = ax + t * dx, qy = ay + t * dy;
+            return Math.hypot(px - qx, py - qy);
+        }
+
+        function exSegsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+            const cross = (ox, oy, px, py, qx, qy) => (px - ox) * (qy - oy) - (py - oy) * (qx - ox);
+            const d1 = cross(cx, cy, dx, dy, ax, ay), d2 = cross(cx, cy, dx, dy, bx, by);
+            const d3 = cross(ax, ay, bx, by, cx, cy), d4 = cross(ax, ay, bx, by, dx, dy);
+            return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+        }
+
+        function exSegSegDist(ax, ay, bx, by, cx, cy, dx, dy) {
+            if (exSegsIntersect(ax, ay, bx, by, cx, cy, dx, dy)) return 0;
+            return Math.min(
+                exSegPointDist(ax, ay, cx, cy, dx, dy), exSegPointDist(bx, by, cx, cy, dx, dy),
+                exSegPointDist(cx, cy, ax, ay, bx, by), exSegPointDist(dx, dy, ax, ay, bx, by)
+            );
+        }
+
+        // 橡皮路径 (x0,y0)→(x1,y1) 是否擦到笔画 s
+        function exStrokeHitBySeg(s, x0, y0, x1, y1) {
+            const pts = s.points;
+            if (!pts || !pts.length) return false;
+            const pad = EX_ERASER_RADIUS + (s.width || 2) / 2 + 1;
+            const bb = s.bbox;
+            if (bb && (Math.max(x0, x1) < bb.minX - pad || Math.min(x0, x1) > bb.maxX + pad
+                    || Math.max(y0, y1) < bb.minY - pad || Math.min(y0, y1) > bb.maxY + pad)) {
+                return false;
+            }
+            if (pts.length === 1) {
+                return exSegPointDist(pts[0][0], pts[0][1], x0, y0, x1, y1) <= pad;
+            }
+            for (let i = 1; i < pts.length; i++) {
+                if (exSegSegDist(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], x0, y0, x1, y1) <= pad) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 沿橡皮移动路径消除所有命中的整笔
+        function exEraseAlong(x0, y0, x1, y1) {
+            let hitAny = false;
+            for (let i = exStrokes.length - 1; i >= 0; i--) {
+                const s = exStrokes[i];
+                if (exStrokeHitBySeg(s, x0, y0, x1, y1)) {
+                    exEraseSession.push({ index: i, stroke: s });
+                    exStrokes.splice(i, 1);
+                    hitAny = true;
+                }
+            }
+            if (hitAny) exRedrawCanvas();
+        }
+
+        function exPushOp(op) {
+            exOpHistory.push(op);
+            if (exOpHistory.length > EX_OP_HISTORY_MAX) exOpHistory.shift();
+            exRedoStack = [];
+            updateExUndoRedoButtons();
+        }
+
+        function exMarkDirty() {
+            exDirtyLocal = true;
+            exDirtyCloud = true;
+            exScheduleAutoSave();
+        }
+
+        // 抬笔后稍候自动保存到本地，防应用意外退出丢笔迹；云同步在返回/切题/完成时进行
+        let exAutoSaveTimer = null;
+        function exScheduleAutoSave() {
+            if (exAutoSaveTimer) clearTimeout(exAutoSaveTimer);
+            exAutoSaveTimer = setTimeout(() => {
+                exAutoSaveTimer = null;
+                if (exDrawing) { exScheduleAutoSave(); return; }
+                saveCurrentDrawingToCache(false);
+            }, 1500);
+        }
+
+        // ---- 笔画生命周期：标准/低延迟两条事件路径共用 ----
+        function exStrokeBegin(x, y) {
+            exDrawing = true;
+            exLastX = x;
+            exLastY = y;
+            if (exEraserMode) {
+                exEraseSession = [];
+                exEraseAlong(x, y, x, y);
             } else {
-                exCanvasCtx.save();
-                exCanvasCtx.setTransform(1, 0, 0, 1, 0, 0);
-                exCanvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-                exCanvasCtx.drawImage(state, 0, 0);
-                exCanvasCtx.restore();
+                exCurrentStroke = { color: exPenColor, width: 2, points: [[x, y]] };
+                exCanvasCtx.beginPath();
+                exCanvasCtx.moveTo(x, y);
+            }
+        }
+
+        function exStrokeMove(x, y) {
+            if (!isFinite(x) || !isFinite(y)) return;
+            if (exEraserMode) {
+                if (exEraseSession) exEraseAlong(exLastX, exLastY, x, y);
+                exLastX = x;
+                exLastY = y;
+            } else {
+                exDrawSegmentTo(x, y);
+                if (exCurrentStroke) exCurrentStroke.points.push([x, y]);
+            }
+        }
+
+        function exStrokeEnd() {
+            exDrawing = false;
+            if (exEraserMode) {
+                if (exEraseSession && exEraseSession.length) {
+                    exPushOp({ type: 'erase', removed: exEraseSession });
+                    exMarkDirty();
+                }
+                exEraseSession = null;
+            } else if (exCurrentStroke) {
+                if (exCurrentStroke.points.length >= 2) {
+                    exCurrentStroke.bbox = exComputeBBox(exCurrentStroke.points);
+                    exStrokes.push(exCurrentStroke);
+                    exPushOp({ type: 'draw', stroke: exCurrentStroke });
+                    exMarkDirty();
+                }
+                exCurrentStroke = null;
             }
         }
 
@@ -20449,10 +20708,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             let rect = null;
 
             const drawFromEvent = (ev) => {
-                const x = ev.clientX - rect.left;
-                const y = ev.clientY - rect.top;
-                if (!isFinite(x) || !isFinite(y)) return;
-                exDrawSegmentTo(x, y);
+                exStrokeMove(ev.clientX - rect.left, ev.clientY - rect.top);
             };
 
             const drawMove = (e) => {
@@ -20474,11 +20730,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 rawSeen = false;
                 rect = canvas.getBoundingClientRect();
                 try { canvas.setPointerCapture(e.pointerId); } catch(err) {}
-                exDrawing = true;
-                exLastX = e.clientX - rect.left;
-                exLastY = e.clientY - rect.top;
-                exCanvasCtx.beginPath();
-                exCanvasCtx.moveTo(exLastX, exLastY);
+                exStrokeBegin(e.clientX - rect.left, e.clientY - rect.top);
             };
 
             const onRaw = (e) => {
@@ -20497,10 +20749,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             const onEnd = (e) => {
                 if (activeId === null || e.pointerId !== activeId) return;
                 activeId = null;
-                if (exDrawing) {
-                    exDrawing = false;
-                    exSaveSnapshot();
-                }
+                if (exDrawing) exStrokeEnd();
             };
 
             const hasRaw = typeof window !== 'undefined' && 'onpointerrawupdate' in window;
@@ -20553,8 +20802,16 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             exCanvasCtx.lineJoin = 'round';
             exCanvasCtx.lineWidth = 2;
             exCanvasCtx.strokeStyle = exPenColor;
-            exStrokeHistory = [];
+            exStrokes = [];
+            exBaseImage = null;
+            exOpHistory = [];
             exRedoStack = [];
+            exCurrentStroke = null;
+            exEraseSession = null;
+            exDrawing = false;
+            exDirtyLocal = false;
+            exDirtyCloud = false;
+            if (exAutoSaveTimer) { clearTimeout(exAutoSaveTimer); exAutoSaveTimer = null; }
             exEraserMode = false;
             updateExUndoRedoButtons();
             const eraserBtn = document.getElementById('exEraserBtn');
@@ -20575,89 +20832,67 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
 
             canvas.onpointerdown = (e) => {
                 e.preventDefault();
-                exDrawing = true;
                 const rect = canvas.getBoundingClientRect();
-                exLastX = e.clientX - rect.left;
-                exLastY = e.clientY - rect.top;
-                exCanvasCtx.beginPath();
-                exCanvasCtx.moveTo(exLastX, exLastY);
+                exStrokeBegin(e.clientX - rect.left, e.clientY - rect.top);
             };
 
             canvas.onpointermove = (e) => {
                 if (!exDrawing) return;
                 e.preventDefault();
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                if (exEraserMode) {
-                    exCanvasCtx.save();
-                    exCanvasCtx.globalCompositeOperation = 'destination-out';
-                    exCanvasCtx.lineWidth = 20;
-                    exCanvasCtx.strokeStyle = 'rgba(0,0,0,1)';
-                    exCanvasCtx.lineTo(x, y);
-                    exCanvasCtx.stroke();
-                    exCanvasCtx.restore();
-                } else {
-                    exCanvasCtx.strokeStyle = exPenColor;
-                    exCanvasCtx.lineWidth = 2;
-                    exCanvasCtx.globalCompositeOperation = 'source-over';
-                    exCanvasCtx.lineTo(x, y);
-                    exCanvasCtx.stroke();
-                }
-                exCanvasCtx.beginPath();
-                exCanvasCtx.moveTo(x, y);
-                exLastX = x;
-                exLastY = y;
+                exStrokeMove(e.clientX - rect.left, e.clientY - rect.top);
             };
 
             canvas.onpointerup = (e) => {
-                if (exDrawing) {
-                    exDrawing = false;
-                    exSaveSnapshot();
-                }
+                if (exDrawing) exStrokeEnd();
             };
 
             canvas.onpointerleave = () => {
-                if (exDrawing) {
-                    exDrawing = false;
-                    exSaveSnapshot();
-                }
+                if (exDrawing) exStrokeEnd();
             };
 
             canvas.addEventListener('touchstart', (e) => { e.preventDefault(); }, { passive: false });
         }
 
-        function exSaveSnapshot() {
-            const canvas = document.getElementById('exerciseDoingCanvas');
-            if (!canvas || !exCanvasCtx) return;
-            const snapshot = exCaptureState(canvas);
-            exStrokeHistory.push(snapshot);
-            if (exLowLatencyEnabled() && exStrokeHistory.length > EX_LOWLAT_HISTORY_MAX) {
-                exStrokeHistory.shift();
-            }
-            exRedoStack = [];
-            updateExUndoRedoButtons();
-        }
-
         function exUndo() {
-            if (exStrokeHistory.length === 0) return;
-            const canvas = document.getElementById('exerciseDoingCanvas');
-            if (!canvas || !exCanvasCtx) return;
-            const current = exCaptureState(canvas);
-            exRedoStack.push(current);
-            const prev = exStrokeHistory.pop();
-            exRestoreState(canvas, prev);
+            if (exOpHistory.length === 0 || !exCanvasCtx) return;
+            const op = exOpHistory.pop();
+            if (op.type === 'draw') {
+                const i = exStrokes.indexOf(op.stroke);
+                if (i >= 0) exStrokes.splice(i, 1);
+            } else if (op.type === 'erase') {
+                // 逆序按记录位置插回，精确还原一次橡皮拖动的全部消除
+                for (let i = op.removed.length - 1; i >= 0; i--) {
+                    const item = op.removed[i];
+                    exStrokes.splice(Math.min(item.index, exStrokes.length), 0, item.stroke);
+                }
+            } else if (op.type === 'clear') {
+                exStrokes = op.strokes.slice();
+                exBaseImage = op.baseImage || null;
+            }
+            exRedoStack.push(op);
+            exRedrawCanvas();
+            exMarkDirty();
             updateExUndoRedoButtons();
         }
 
         function exRedo() {
-            if (exRedoStack.length === 0) return;
-            const canvas = document.getElementById('exerciseDoingCanvas');
-            if (!canvas || !exCanvasCtx) return;
-            const current = exCaptureState(canvas);
-            exStrokeHistory.push(current);
-            const next = exRedoStack.pop();
-            exRestoreState(canvas, next);
+            if (exRedoStack.length === 0 || !exCanvasCtx) return;
+            const op = exRedoStack.pop();
+            if (op.type === 'draw') {
+                exStrokes.push(op.stroke);
+            } else if (op.type === 'erase') {
+                for (let i = 0; i < op.removed.length; i++) {
+                    const idx = exStrokes.indexOf(op.removed[i].stroke);
+                    if (idx >= 0) exStrokes.splice(idx, 1);
+                }
+            } else if (op.type === 'clear') {
+                exStrokes = [];
+                exBaseImage = null;
+            }
+            exOpHistory.push(op);
+            exRedrawCanvas();
+            exMarkDirty();
             updateExUndoRedoButtons();
         }
 
@@ -20672,7 +20907,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
         function updateExUndoRedoButtons() {
             const undoBtn = document.getElementById('exUndoBtn');
             const redoBtn = document.getElementById('exRedoBtn');
-            if (undoBtn) undoBtn.disabled = exStrokeHistory.length === 0;
+            if (undoBtn) undoBtn.disabled = exOpHistory.length === 0;
             if (redoBtn) redoBtn.disabled = exRedoStack.length === 0;
         }
 
@@ -20689,16 +20924,21 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
 
         function clearExCanvas() {
             if (!exCanvasCtx) return;
-            const canvas = document.getElementById('exerciseDoingCanvas');
-            exCanvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-            exStrokeHistory = [];
-            exRedoStack = [];
-            updateExUndoRedoButtons();
+            if (exStrokes.length || exBaseImage) {
+                exPushOp({ type: 'clear', strokes: exStrokes, baseImage: exBaseImage });
+                exStrokes = [];
+                exBaseImage = null;
+                exRedrawCanvas();
+                exMarkDirty();
+            }
             if (exDoingState) {
                 const key = `${exDoingState.taskId}_${exDoingState.questionIndex}`;
                 delete exDrawingCache[key];
-                const dbKey = `exercise_drawing_cache_${key}`;
-                deleteFileData(dbKey).catch(e => {});
+                delete exStrokesCache[key];
+                deleteFileData(`exercise_drawing_cache_${key}`).catch(e => {});
+                deleteFileData(`exercise_strokes_cache_${key}`).catch(e => {});
+                exDeleteDrawingFromCloud(`exercise_drawing_cache_${key}`);
+                exDeleteDrawingFromCloud(`exercise_strokes_cache_${key}`);
             }
         }
 
@@ -20732,6 +20972,9 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             }
 
             const userDrawing = getExCanvasDataURL();
+
+            // 完成时先把当前书写持久化到本地并云同步（评分失败也不丢内容）
+            saveCurrentDrawingToCache();
 
             // Show loading
             showToast(i18n('toast_asking_ai'));
