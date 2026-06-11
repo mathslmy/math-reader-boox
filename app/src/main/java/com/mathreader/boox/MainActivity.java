@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.content.SharedPreferences;
 import android.util.Log;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
@@ -25,11 +26,15 @@ import androidx.webkit.WebViewAssetLoader;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     // https 同源加载，localStorage / IndexedDB / ServiceWorker 才能正常持久化
     private static final String START_URL = "https://appassets.androidplatform.net/www/index.html";
+    private static final String PREFS_NAME = "app_version_state";
+    private static final String PREF_LAST_VERSION_CODE = "last_version_code";
     private static final int REQUEST_FILE_CHOOSER = 1001;
 
     private WebView webView;
@@ -46,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
         webView = new WebView(this);
         setContentView(webView);
 
+        clearWebViewCacheAfterApkUpdate();
+
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -53,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
+        // APK 内置页面升级后不能继续使用 WebView 的旧 HTTP 缓存。
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         // 系统字体缩放会破坏 PWA 布局
         settings.setTextZoom(100);
 
@@ -63,7 +72,18 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                return assetLoader.shouldInterceptRequest(request.getUrl());
+                WebResourceResponse response = assetLoader.shouldInterceptRequest(request.getUrl());
+                if (response != null) {
+                    Map<String, String> headers = new HashMap<>();
+                    if (response.getResponseHeaders() != null) {
+                        headers.putAll(response.getResponseHeaders());
+                    }
+                    headers.put("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+                    headers.put("Pragma", "no-cache");
+                    headers.put("Expires", "0");
+                    response.setResponseHeaders(headers);
+                }
+                return response;
             }
 
             @Override
@@ -132,7 +152,34 @@ public class MainActivity extends AppCompatActivity {
         webView.addJavascriptInterface(penBridge, "BooxPenNative");
         webView.addJavascriptInterface(downloadBridge, "BooxDownloadNative");
 
-        webView.loadUrl(START_URL);
+        webView.loadUrl(buildStartUrl());
+    }
+
+
+    private void clearWebViewCacheAfterApkUpdate() {
+        int currentVersionCode = getCurrentVersionCode();
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        int lastVersionCode = prefs.getInt(PREF_LAST_VERSION_CODE, -1);
+        if (lastVersionCode != currentVersionCode) {
+            webView.clearCache(true);
+            prefs.edit().putInt(PREF_LAST_VERSION_CODE, currentVersionCode).apply();
+        }
+    }
+
+    private String buildStartUrl() {
+        return START_URL + "?v=" + getCurrentVersionCode();
+    }
+
+    private int getCurrentVersionCode() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                return (int) getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
+            }
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+        } catch (Exception e) {
+            Log.w(TAG, "read package version failed", e);
+            return 0;
+        }
     }
 
     private void injectAdapter() {

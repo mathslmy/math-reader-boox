@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [ main, 'claude/**' ]
+    branches: ['**']
   workflow_dispatch:
 
 jobs:
@@ -24,5 +24,5 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: math-reader-boox-debug
+          name: math-reader-boox-debug-${{ github.run_number }}-${{ github.sha }}
           path: app/build/outputs/apk/debug/*.apk
