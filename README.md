@@ -40,10 +40,15 @@
 - **手指点触** → 翻页（画笔模式、评论模式都翻页）。
 - **触控笔 · 画笔模式** → 原生 `TouchHelper` 低延迟书写（翻页热区为透明覆盖层，
   触控笔由原生 SDK 按屏幕矩形拦截，手指仍可穿透热区翻页）。
-- **触控笔 · 评论模式** → 在页面上勾选一片区域，抬笔后弹出「问AI」输入框；
-  优先提取框选区域内的 PDF 文本（扫描件无文本时回退为截图）发给 AI，提示词与
-  讲义「选择问AI」一致。AI 回答以**计数圆点 marker + comment 悬浮框**呈现
-  （存为 `doc.annotations` 中 `type:'note', ai:true` 的标注，点圆点看回答、可删除）。
+- **触控笔 · 评论模式** → 像 Chrome 一样**逐字选中 PDF 文字**：每页用 pdf.js
+  `getTextContent()` 叠一层透明可选文字层（`.reader-text-layer`），触控笔拖动经
+  `caretRangeFromPoint` + `setBaseAndExtent` 实时原生高亮选中；抬笔弹「问AI」输入框，
+  提示词与讲义「选择问AI」一致。扫描件等无文字的页面回退为**框选区域截图**发给视觉 AI。
+  AI 回答以**计数圆点 marker + comment 悬浮框**呈现（存为 `doc.annotations` 中
+  `type:'note', ai:true` 的标注，点圆点看回答、可删除）。
+- 评论模式下把可见页 `placeholder` 抬到翻页热区之上（`z-index:37`）使文字层接管触控笔；
+  翻页热区与文字层均设 `touch-action:none`，避免笔移动被识别为滚动而 `pointercancel`
+  打断选取（这正是早期"画一点就断"的根因）。
 
 ## 构建
 
@@ -73,9 +78,13 @@ cp ../math-reader/{manifest.json,sw.js,icon-infinity-white.svg} \
 ```
 
 `index.html` 的墨水屏补丁集中在这些标识符上（搜索即可定位）：
-`booxReaderIsPen`、`bindEinkReaderTapZone`、`einkSelect*`、`einkExtractTextInBox`、
+`booxReaderIsPen`、`bindEinkReaderTapZone`、`einkPageTurnByClientX`、`einkHandleReaderTap`、
+`buildReaderTextLayer`、`attachReaderTextLayerInput`、`finalizeReaderTextSelection`、
+`applyReaderEinkInputMode`、`clearReaderTextSelection`、`einkSelect*`、`einkExtractTextInBox`、
 `askAIAboutReaderSelection`、`addDocAiComment`、`renderPageNoteMarkers`（`n.ai` 分支）、
-以及 CSS 的 `.ai-marker` / `.ai-bubble` / `.eink-select-overlay`、HTML 的 `#readerSelectionMenu`。
+`renderSinglePage`/`einkShowPage`/`applyPenModeUI`/`toggleEinkMode`（末尾调 `applyReaderEinkInputMode`）、
+以及 CSS 的 `.reader-text-layer` / `.ai-marker` / `.ai-bubble` / `.eink-select-overlay`、
+HTML 的 `#readerSelectionMenu`。
 
 `boox-pen.js` 依赖 PWA 中以下约定（变更时需同步调整适配器）：
 
