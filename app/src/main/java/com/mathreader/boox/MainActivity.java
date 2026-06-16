@@ -48,7 +48,17 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        webView = new WebView(this);
+        // 重写 dispatchTouchEvent，在事件派发给页面前记录工具类型（手指/触控笔），
+        // 供阅读界面区分"手指翻页"与"触控笔勾选/书写"。
+        webView = new WebView(this) {
+            @Override
+            public boolean dispatchTouchEvent(android.view.MotionEvent event) {
+                if (penBridge != null) {
+                    penBridge.onWebViewTouchEvent(event);
+                }
+                return super.dispatchTouchEvent(event);
+            }
+        };
         setContentView(webView);
 
         clearWebViewCacheAfterApkUpdate();

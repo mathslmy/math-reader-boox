@@ -5,6 +5,7 @@ import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 
@@ -40,6 +41,9 @@ public class BooxPenBridge {
     private boolean rawOpened;
     // JS 侧期望的开关状态，onPause/onResume 时据此恢复
     private volatile boolean wantEnabled;
+    // 最近一次按下的输入工具类型（手指 / 触控笔），供阅读界面区分翻页与勾选。
+    // 默认手指：检测失败时退化为"点触翻页"，不会误吞翻页操作。
+    private volatile int lastToolType = MotionEvent.TOOL_TYPE_FINGER;
 
     private final RawInputCallback rawInputCallback = new RawInputCallback() {
         @Override
@@ -92,6 +96,38 @@ public class BooxPenBridge {
     @JavascriptInterface
     public boolean isAvailable() {
         return sdkAvailable;
+    }
+
+    /**
+     * 由 MainActivity 的 WebView 在 dispatchTouchEvent 中调用，记录每次按下的工具类型。
+     * 在 UI 线程同步执行，先于 WebView 把事件派发给页面 JS，因此 JS 在 pointerdown
+     * 里调用 {@link #isStylusActive()} 读到的就是本次手势的工具类型。
+     */
+    public void onWebViewTouchEvent(MotionEvent event) {
+        if (event == null) {
+            return;
+        }
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN
+                || action == MotionEvent.ACTION_HOVER_ENTER || action == MotionEvent.ACTION_HOVER_MOVE) {
+            try {
+                lastToolType = event.getToolType(event.getActionIndex());
+            } catch (Throwable t) {
+                lastToolType = MotionEvent.TOOL_TYPE_FINGER;
+            }
+        }
+    }
+
+    /** 最近一次按下是否为触控笔（手写笔）。pointerType 缺失时 JS 侧据此判定。 */
+    @JavascriptInterface
+    public boolean isStylusActive() {
+        return lastToolType == MotionEvent.TOOL_TYPE_STYLUS;
+    }
+
+    /** 原始工具类型（MotionEvent.TOOL_TYPE_*），调试用。 */
+    @JavascriptInterface
+    public int getLastToolType() {
+        return lastToolType;
     }
 
     /**
