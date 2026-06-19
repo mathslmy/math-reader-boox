@@ -26,6 +26,35 @@
         } catch (e) { /* 只读时保持原状，仅影响显示 */ }
     }
 
+    /* ---------------- Boox 触控笔 / 手指检测 ----------------
+     * 阅读界面（墨水屏模式）需要区分"手指点触翻页"与"触控笔勾选/书写"。
+     * 标准 PointerEvent.pointerType 在 Boox WebView 上对手写笔上报 'pen'、
+     * 手指上报 'touch'；个别机型/事件 pointerType 缺失时回退到原生
+     * MotionEvent.getToolType（由 MainActivity 注入 BooxPenNative.isStylusActive）。
+     * 始终暴露，非 Boox 设备亦可用（仅依赖 pointerType），保证 PWA 独立运行。 */
+    window.__booxInput = {
+        isPen: function (e) {
+            // PointerEvent.pointerType 是逐事件属性、永不过期，Chromium WebView 对
+            // 触控笔上报 'pen'、手指上报 'touch'，最可靠，优先采用。
+            if (e && e.pointerType) {
+                if (e.pointerType === 'pen') { return true; }
+                if (e.pointerType === 'touch') { return false; }
+                // 'mouse' / '' → 落到原生工具类型兜底
+            }
+            // 兜底：原生 MotionEvent 工具类型（1=手指 2=触控笔 3=鼠标 4=笔尾橡皮）
+            try {
+                var n = window.BooxPenNative;
+                if (n && typeof n.getLastToolType === 'function') {
+                    var t = n.getLastToolType();
+                    if (t === 2 || t === 4) { return true; }
+                    if (t === 1 || t === 3) { return false; }
+                }
+            } catch (err) { /* 非 Boox 设备 */ }
+            return false;
+        },
+        isFinger: function (e) { return !this.isPen(e); }
+    };
+
     /* ---------------- blob 下载桥接（与手写 SDK 无关，始终启用） ---------------- */
     var dl = window.BooxDownloadNative;
     if (dl) {
@@ -114,10 +143,17 @@
             [r.left + 8, r.top + 8], [r.right - 8, r.top + 8],
             [r.left + 8, r.bottom - 8], [r.right - 8, r.bottom - 8]
         ];
+        var isAnno = el.classList && el.classList.contains('annotation-canvas');
         for (var i = 0; i < samples.length; i++) {
             var x = Math.min(Math.max(samples[i][0], 1), vw - 1);
             var y = Math.min(Math.max(samples[i][1], 1), vh - 1);
-            if (document.elementFromPoint(x, y) === el) { return true; }
+            var hit = document.elementFromPoint(x, y);
+            if (hit === el) { return true; }
+            // 墨水屏阅读器：翻页热区是盖在批注层之上的透明覆盖层，触控笔由原生 SDK
+            // 按屏幕矩形拦截（与 DOM 层级无关，且手指仍可穿透到热区翻页），故视为可穿透。
+            if (isAnno && hit && hit.classList && hit.classList.contains('eink-tap-zone')) {
+                return true;
+            }
         }
         return false;
     }

@@ -1014,6 +1014,8 @@
             bottom: 0;
             z-index: 35;
             -webkit-tap-highlight-color: transparent;
+            /* 防止浏览器把触控笔/手指移动识别为滚动并发 pointercancel（与绘制画布一致） */
+            touch-action: none;
         }
         .eink-tap-zone.left {
             left: 0;
@@ -1060,6 +1062,82 @@
         }
         .eink-page-indicator.show {
             opacity: 1;
+        }
+
+        /* ===== 墨水屏：触控笔选字/勾选内容问AI（评论模式） ===== */
+        /* 勾选时的笔迹反馈层，盖在翻页热区与抬升的页面之上但不拦截事件 */
+        .eink-select-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 38;
+            pointer-events: none;
+        }
+        /* 可选中的 PDF 文字层：透明文字叠在页面 canvas 上，触控笔拖动即原生高亮选中 */
+        .reader-text-layer {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            line-height: 1;
+            -webkit-user-select: text;
+            user-select: text;
+            touch-action: none;
+            z-index: 2;
+        }
+        .reader-text-layer span {
+            position: absolute;
+            white-space: pre;
+            color: transparent;
+            transform-origin: 0 0;
+            cursor: text;
+        }
+        .reader-text-layer ::selection { background: rgba(0, 122, 255, 0.35); }
+        .reader-text-layer ::-moz-selection { background: rgba(0, 122, 255, 0.35); }
+        /* AI 评论的计数圆点：沿用笔记 marker，换蓝色以区分手写笔记 */
+        .annotation-marker.ai-marker {
+            background: rgba(59, 130, 246, 0.9);
+            border-color: #2563eb;
+            color: #fff;
+        }
+        /* AI 评论悬浮框：比普通笔记气泡更宽、可滚动，承载 Markdown+公式回答 */
+        .note-bubble.ai-bubble {
+            max-width: 300px;
+            max-height: 320px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        /* body 级 fixed 浮层气泡：去掉指向 marker 的小三角 */
+        .note-bubble.floating-bubble::after,
+        .note-bubble.floating-bubble::before {
+            display: none;
+        }
+        .note-bubble-q {
+            font-size: 11px;
+            color: var(--text-muted);
+            border-left: 2px solid var(--accent);
+            padding-left: 6px;
+            margin: 2px 0 8px;
+            max-height: 54px;
+            overflow: hidden;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .note-bubble-ai-body {
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+        .note-bubble-ai-body .katex { font-size: 0.95em; }
+        .note-bubble-ai-body .katex-display { margin: 6px 0; }
+        .note-bubble-del {
+            margin-top: 8px;
+            padding: 4px 10px;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: transparent;
+            color: #ef4444;
+            cursor: pointer;
         }
 
         /* ==================== Page 3: Notes Collection ==================== */
@@ -5690,6 +5768,16 @@
         </div>
     </div>
 
+    <!-- 墨水屏阅读器：触控笔勾选内容后的"问AI"菜单（沿用讲义选择问AI样式） -->
+    <div class="lecture-selection-menu" id="readerSelectionMenu">
+        <div class="lecture-ask-input-wrap">
+            <input type="text" id="readerAskInput" class="lecture-ask-input" placeholder="补充描述（可为空）" autocomplete="off" />
+            <button class="lecture-ask-send-btn" onclick="askAIAboutReaderSelection()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+        </div>
+    </div>
+
     <!-- 讲义草稿面板 -->
     <div class="draft-panel" id="lectureDraftPanel">
         <div class="draft-panel-header">
@@ -8653,6 +8741,11 @@
 
             pageData.rendered = true;
             renderedPages.add(pageNum);
+
+            // 墨水屏评论模式：为当前页构建可选文字层（在 innerHTML 清空之后，避免被清掉）
+            if (einkMode && !penMode && pageNum === currentPage) {
+                buildReaderTextLayer(pageNum);
+            }
         }
 
         // 把画笔交互绑定到单个页面的批注 canvas 上
@@ -8823,6 +8916,7 @@
 
             pageWrapper.addEventListener('touchstart', (e) => {
                 if (penMode) { e.preventDefault(); return; }
+                if (einkMode && window.__booxInput && window.__booxInput.isPen()) { return; }
                 lpMoved = false;
                 lpStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                 lpTimer = setTimeout(() => {
@@ -8874,59 +8968,137 @@
                 markerContainer.style.cssText = `position:absolute;left:${n.x * 100}%;top:${n.y * 100}%;z-index:10;`;
 
                 const marker = document.createElement('div');
-                marker.className = 'annotation-marker';
+                marker.className = n.ai ? 'annotation-marker ai-marker' : 'annotation-marker';
                 marker.style.position = 'relative';
                 marker.style.transform = 'translate(-50%, -50%)';
                 marker.textContent = (i + 1);
                 marker.title = n.text || i18n('note_default');
 
-                // 长按编辑
-                let pressTimer = null;
-                marker.addEventListener('touchstart', (e) => {
-                    pressTimer = setTimeout(() => {
-                        e.preventDefault();
-                        editDocNote(currentDoc.id, pageNum, i, n);
-                    }, 500);
-                });
-                marker.addEventListener('touchend', () => clearTimeout(pressTimer));
-                marker.addEventListener('touchmove', () => clearTimeout(pressTimer));
+                // 长按编辑（仅手写/文字笔记；AI 评论通过气泡内删除按钮管理）
+                if (!n.ai) {
+                    let pressTimer = null;
+                    marker.addEventListener('touchstart', (e) => {
+                        pressTimer = setTimeout(() => {
+                            e.preventDefault();
+                            editDocNote(currentDoc.id, pageNum, i, n);
+                        }, 500);
+                    });
+                    marker.addEventListener('touchend', () => clearTimeout(pressTimer));
+                    marker.addEventListener('touchmove', () => clearTimeout(pressTimer));
+                }
 
                 marker.onclick = (e) => {
                     e.stopPropagation();
                     document.querySelectorAll('.note-bubble').forEach(b => b.remove());
                     const bubble = document.createElement('div');
-                    bubble.className = 'note-bubble';
+                    bubble.className = n.ai ? 'note-bubble ai-bubble' : 'note-bubble';
                     if (n.y < 0.3) {
                         bubble.classList.add('bubble-down');
                     }
                     const time = n.createdAt ? new Date(n.createdAt).toLocaleString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
-                    
+
                     const closeBtn = document.createElement('button');
                     closeBtn.className = 'note-bubble-close';
                     closeBtn.innerHTML = '&times;';
                     closeBtn.onclick = (ev) => { ev.stopPropagation(); bubble.remove(); };
-                    
-                    const textDiv = document.createElement('div');
-                    textDiv.className = 'note-bubble-text';
-                    textDiv.textContent = n.text || i18n('handwriting_note');
-                    
                     bubble.appendChild(closeBtn);
-                    bubble.appendChild(textDiv);
-                    
-                    if (time) {
-                        const timeDiv = document.createElement('div');
-                        timeDiv.className = 'note-bubble-time';
-                        timeDiv.textContent = time;
-                        bubble.appendChild(timeDiv);
+
+                    if (n.ai) {
+                        // AI 评论：先展示框选原文（若有），再展示 Markdown+公式回答
+                        if (n.question) {
+                            const qDiv = document.createElement('div');
+                            qDiv.className = 'note-bubble-q';
+                            qDiv.textContent = n.question;
+                            bubble.appendChild(qDiv);
+                        }
+                        const bodyDiv = document.createElement('div');
+                        bodyDiv.className = 'note-bubble-ai-body';
+                        bodyDiv.innerHTML = renderChatMarkdownLatex(n.text || '');
+                        bubble.appendChild(bodyDiv);
+                        renderLectureMath(bodyDiv);
+
+                        if (time) {
+                            const timeDiv = document.createElement('div');
+                            timeDiv.className = 'note-bubble-time';
+                            timeDiv.textContent = time;
+                            bubble.appendChild(timeDiv);
+                        }
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'note-bubble-del';
+                        delBtn.textContent = i18n('delete');
+                        delBtn.onclick = (ev) => {
+                            ev.stopPropagation();
+                            deleteDocAnnotation(currentDoc.id, n);
+                        };
+                        bubble.appendChild(delBtn);
+                    } else {
+                        const textDiv = document.createElement('div');
+                        textDiv.className = 'note-bubble-text';
+                        textDiv.textContent = n.text || i18n('handwriting_note');
+                        bubble.appendChild(textDiv);
+                        if (time) {
+                            const timeDiv = document.createElement('div');
+                            timeDiv.className = 'note-bubble-time';
+                            timeDiv.textContent = time;
+                            bubble.appendChild(timeDiv);
+                        }
+                        renderNoteBubbleMath(textDiv);
                     }
-                    
-                    marker.appendChild(bubble);
-                    renderNoteBubbleMath(textDiv);
+
+                    // 墨水屏模式：阅读器容器 overflow:hidden 且翻页热区盖在上面，
+                    // 气泡改为 body 级 fixed 浮层，避免被裁剪/被热区遮挡。
+                    if (einkMode) {
+                        placeFloatingBubble(bubble, marker);
+                    } else {
+                        marker.appendChild(bubble);
+                    }
                 };
 
                 markerContainer.appendChild(marker);
                 pageWrapper.appendChild(markerContainer);
             });
+        }
+
+        // 把气泡作为 fixed 浮层挂到 body，定位在 marker 附近并夹紧在视口内
+        function placeFloatingBubble(bubble, marker) {
+            bubble.classList.add('floating-bubble');
+            bubble.classList.remove('bubble-down');
+            bubble.style.position = 'fixed';
+            bubble.style.left = '0px';
+            bubble.style.top = '0px';
+            bubble.style.bottom = 'auto';
+            bubble.style.transform = 'none';
+            bubble.style.zIndex = '500';
+            bubble.style.visibility = 'hidden';
+            document.body.appendChild(bubble);
+            const mr = marker.getBoundingClientRect();
+            const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
+            let left = mr.left + mr.width / 2 - bw / 2;
+            left = Math.max(8, Math.min(left, window.innerWidth - bw - 8));
+            let top = mr.top - bh - 10;
+            if (top < 8) top = mr.bottom + 10;
+            top = Math.max(8, Math.min(top, window.innerHeight - bh - 8));
+            bubble.style.left = left + 'px';
+            bubble.style.top = top + 'px';
+            bubble.style.visibility = 'visible';
+        }
+
+        // 删除一条标注（按对象引用），并刷新当前页圆点
+        function deleteDocAnnotation(docId, annotation) {
+            const doc = ensureDocAnnotations(docId);
+            if (!doc || !doc.annotations) return;
+            const idx = doc.annotations.indexOf(annotation);
+            if (idx > -1) {
+                doc.annotations.splice(idx, 1);
+                doc.annotationsUpdatedAt = Date.now();
+                saveData();
+                if (pdfDoc && currentPage === annotation.page) refreshPageMarkers(annotation.page);
+            }
+        }
+
+        // 关闭所有评论气泡（含挂在 body 上的墨水屏 fixed 浮层）
+        function closeAllNoteBubbles() {
+            document.querySelectorAll('.note-bubble').forEach(b => b.remove());
         }
 
         let scrollListenerAttached = false;
@@ -9027,6 +9199,9 @@
 
         function einkShowPage(pageNum) {
             if (pageNum < 1 || pageNum > totalPages) return;
+            closeAllNoteBubbles();
+            clearReaderTextSelection();
+            hideReaderSelectionMenu();
             for (let i = 1; i <= totalPages; i++) {
                 const pd = pageElements[i];
                 if (pd && pd.placeholder) pd.placeholder.classList.remove('eink-visible');
@@ -9034,9 +9209,9 @@
             const pageData = pageElements[pageNum];
             if (!pageData) return;
             pageData.placeholder.classList.add('eink-visible');
+            currentPage = pageNum;
             if (!pageData.rendered) renderSinglePage(pageNum);
             einkFitPage(pageData);
-            currentPage = pageNum;
             document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
             if (!suppressScrollWriteback && !isRenderingAllPages && currentDoc && totalPages > 0) {
                 currentDoc.currentPage = pageNum;
@@ -9044,6 +9219,7 @@
                 currentDoc.progressUpdatedAt = Date.now();
                 saveData();
             }
+            applyReaderEinkInputMode();
         }
 
         function einkFitPage(pageData) {
@@ -9937,6 +10113,8 @@
         }
 
         function closeReader() {
+            closeAllNoteBubbles();
+            hideReaderSelectionMenu();
             switchPage(1);
             renderLibrary();
         }
@@ -9950,6 +10128,9 @@
                 if (eb) eb.classList.remove('active');
             }
             applyPenModeUI();
+            closeAllNoteBubbles();
+            hideReaderSelectionMenu();
+            einkPendingSelection = null;
             appData.settings.penMode = penMode;
             saveData();
             showToast(penMode ? i18n('toast_pen_on') : i18n('toast_pen_off'));
@@ -9990,6 +10171,9 @@
                 readerCont.style.webkitUserSelect = penMode ? 'none' : '';
                 readerCont.style.userSelect = penMode ? 'none' : '';
             }
+
+            // 墨水屏：按模式切换页面分层（评论模式启用文字层选字 / 画笔模式交回原生书写）
+            applyReaderEinkInputMode();
         }
 
         // ==================== Notes (long press) ====================
@@ -10985,6 +11169,7 @@
             }
             setupEinkReaderTapZones();
             setupEinkLectureTapZones();
+            applyReaderEinkInputMode();
             showToast(einkMode ? i18n('toast_eink_on') : i18n('toast_eink_off'));
         }
 
@@ -11019,22 +11204,14 @@
                     leftZone = document.createElement('div');
                     leftZone.id = 'einkReaderTapLeft';
                     leftZone.className = 'eink-tap-zone left';
-                    leftZone.addEventListener('click', function(e) {
-                        if (!einkMode || penMode) return;
-                        e.stopPropagation();
-                        prevPage();
-                    });
+                    bindEinkReaderTapZone(leftZone, true);
                     container.appendChild(leftZone);
                 }
                 if (!rightZone) {
                     rightZone = document.createElement('div');
                     rightZone.id = 'einkReaderTapRight';
                     rightZone.className = 'eink-tap-zone right';
-                    rightZone.addEventListener('click', function(e) {
-                        if (!einkMode || penMode) return;
-                        e.stopPropagation();
-                        nextPage();
-                    });
+                    bindEinkReaderTapZone(rightZone, false);
                     container.appendChild(rightZone);
                 }
                 leftZone.style.display = '';
@@ -11045,6 +11222,539 @@
             } else {
                 if (leftZone) leftZone.style.display = 'none';
                 if (rightZone) rightZone.style.display = 'none';
+            }
+        }
+
+        /* ==================== 墨水屏：手指翻页 / 触控笔勾选问AI ====================
+         * 翻页热区上的指针：
+         *   - 手指点触  → 翻页（画笔模式、评论模式都翻页，符合"手指点触才是翻页"）。
+         *   - 触控笔 + 评论模式 → 勾选一片区域，抬笔后对框选内容"问AI"。
+         *   - 触控笔 + 画笔模式 → 不在此处理（书写由原生 Onyx SDK 直渲染层接管）。
+         * 触控笔检测优先用 boox-pen.js 注入的 __booxInput（pointerType + 原生工具类型），
+         * 缺失时退化为标准 PointerEvent.pointerType，保证 PWA 在普通设备也能运行。 */
+        function booxReaderIsPen(e) {
+            if (window.__booxInput && typeof window.__booxInput.isPen === 'function') {
+                return window.__booxInput.isPen(e);
+            }
+            return !!(e && e.pointerType === 'pen');
+        }
+
+        let einkSel = null; // { zone, pointerId, pts:[{x,y}], moved }
+
+        // 翻页热区遮住圆点时，用几何命中测试找到被点的圆点并打开其评论气泡
+        function einkOpenMarkerAtPoint(x, y) {
+            const pd = pageElements[currentPage];
+            if (!pd || !pd.placeholder) return false;
+            const markers = pd.placeholder.querySelectorAll('.annotation-marker');
+            for (let i = markers.length - 1; i >= 0; i--) {
+                const r = markers[i].getBoundingClientRect();
+                const pad = 8;
+                if (x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad) {
+                    if (typeof markers[i].onclick === 'function') {
+                        markers[i].onclick({ stopPropagation: () => {} });
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 按点击横坐标翻页（左 40% 上一页，其余下一页），翻页热区与文字层共用
+        function einkPageTurnByClientX(x) {
+            const container = document.getElementById('readerContainer');
+            if (!container) return;
+            const cr = container.getBoundingClientRect();
+            if (cr.width <= 0) return;
+            if ((x - cr.left) / cr.width < 0.4) { prevPage(); } else { nextPage(); }
+        }
+
+        // 翻页热区：只处理手指点触翻页（覆盖页面外的留白区域）；
+        // 触控笔的选字/勾选改由页面上的 .reader-text-layer 接管（见 attachReaderTextLayerInput）。
+        function bindEinkReaderTapZone(zone, isLeft) {
+            let tapStartX = 0, tapStartY = 0, tapMoved = false, tapDownTime = 0, tapIsPen = false;
+
+            zone.addEventListener('pointerdown', function (e) {
+                if (!einkMode) return;
+                tapIsPen = booxReaderIsPen(e);
+                tapMoved = false;
+                tapStartX = e.clientX; tapStartY = e.clientY;
+                tapDownTime = Date.now();
+            });
+
+            zone.addEventListener('pointermove', function (e) {
+                if (Math.abs(e.clientX - tapStartX) > 10 || Math.abs(e.clientY - tapStartY) > 10) {
+                    tapMoved = true;
+                }
+            });
+
+            zone.addEventListener('pointerup', function (e) {
+                if (!einkMode) return;
+                if (tapIsPen) return;                  // 触控笔不翻页
+                if (tapMoved) return;                  // 拖动不翻页
+                if (isPinching) return;                // 双指手势中不翻页
+                if (Date.now() - tapDownTime > 700) return; // 长按不翻页
+                if (einkHandleReaderTap(e.clientX, e.clientY)) return; // 关气泡/点圆点
+                einkPageTurnByClientX(e.clientX);
+            });
+        }
+
+        // 处理一次"评论区"点触：关掉已开气泡 / 点到圆点看评论。返回 true 表示已消费，不应翻页。
+        function einkHandleReaderTap(x, y) {
+            const hadBubble = !!document.querySelector('.note-bubble');
+            closeAllNoteBubbles();
+            clearReaderTextSelection();
+            hideReaderSelectionMenu();
+            if (einkOpenMarkerAtPoint(x, y)) return true;
+            return hadBubble; // 本次点触只是关掉气泡/选区
+        }
+
+        // ---- 勾选笔迹反馈层 ----
+        function einkEnsureSelectOverlay() {
+            const container = document.getElementById('readerContainer');
+            if (!container) return null;
+            let ov = document.getElementById('einkSelectOverlay');
+            if (!ov) {
+                ov = document.createElement('canvas');
+                ov.id = 'einkSelectOverlay';
+                ov.className = 'eink-select-overlay';
+                container.appendChild(ov);
+            }
+            const w = container.clientWidth, h = container.clientHeight;
+            if (ov.width !== w || ov.height !== h) { ov.width = w; ov.height = h; }
+            ov.style.width = w + 'px';
+            ov.style.height = h + 'px';
+            return ov;
+        }
+
+        function einkSelectStart(zone, e) {
+            if (isPinching) return;
+            const ov = einkEnsureSelectOverlay();
+            try { zone.setPointerCapture(e.pointerId); } catch (err) {}
+            einkSel = { zone: zone, pointerId: e.pointerId, pts: [{ x: e.clientX, y: e.clientY }], moved: false };
+            if (ov) ov.getContext('2d').clearRect(0, 0, ov.width, ov.height);
+        }
+
+        function einkSelectMove(e) {
+            if (!einkSel) return;
+            if (isPinching) { einkSelectCancel(); return; }
+            einkSel.pts.push({ x: e.clientX, y: e.clientY });
+            einkSel.moved = true;
+            const ov = document.getElementById('einkSelectOverlay');
+            const container = document.getElementById('readerContainer');
+            if (!ov || !container) return;
+            const cr = container.getBoundingClientRect();
+            const ctx = ov.getContext('2d');
+            ctx.clearRect(0, 0, ov.width, ov.height);
+            ctx.strokeStyle = 'rgba(37,99,235,0.9)';
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            const p0 = einkSel.pts[0];
+            ctx.moveTo(p0.x - cr.left, p0.y - cr.top);
+            for (let i = 1; i < einkSel.pts.length; i++) {
+                ctx.lineTo(einkSel.pts[i].x - cr.left, einkSel.pts[i].y - cr.top);
+            }
+            ctx.stroke();
+        }
+
+        function einkSelectClearOverlay() {
+            const ov = document.getElementById('einkSelectOverlay');
+            if (ov) ov.getContext('2d').clearRect(0, 0, ov.width, ov.height);
+        }
+
+        function einkSelectCancel() {
+            if (einkSel) {
+                try { einkSel.zone.releasePointerCapture(einkSel.pointerId); } catch (err) {}
+            }
+            einkSel = null;
+            einkSelectClearOverlay();
+        }
+
+        async function einkSelectEnd(e) {
+            const sel = einkSel;
+            einkSel = null;
+            if (!sel) return;
+            try { sel.zone.releasePointerCapture(sel.pointerId); } catch (err) {}
+            einkSelectClearOverlay();
+            if (!sel.moved || sel.pts.length < 2) return; // 只是点了一下，忽略
+
+            // 勾选笔迹的外接矩形（client 坐标）
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            sel.pts.forEach(p => {
+                if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+            });
+            // 区域过小（误触）则忽略
+            if ((maxX - minX) < 12 && (maxY - minY) < 12) return;
+
+            const pageNum = currentPage;
+            const pageData = pageElements[pageNum];
+            if (!pageData || !pageData.placeholder) return;
+            const placeholder = pageData.placeholder;
+            const pr = placeholder.getBoundingClientRect();
+            if (pr.width <= 0 || pr.height <= 0) return;
+
+            // 归一化到页面（0~1），并裁掉页面外部分
+            const clamp01 = v => Math.max(0, Math.min(1, v));
+            const nx0 = clamp01((minX - pr.left) / pr.width);
+            const ny0 = clamp01((minY - pr.top) / pr.height);
+            const nx1 = clamp01((maxX - pr.left) / pr.width);
+            const ny1 = clamp01((maxY - pr.top) / pr.height);
+            if ((nx1 - nx0) <= 0 || (ny1 - ny0) <= 0) return; // 完全在页面外
+
+            const centerX = (nx0 + nx1) / 2;
+            const centerY = (ny0 + ny1) / 2;
+
+            // 优先提取框选区域内的 PDF 文本；扫描件等无文本时回退到截图
+            let selectedText = '';
+            try {
+                selectedText = await einkExtractTextInBox(pageNum, { x0: nx0, y0: ny0, x1: nx1, y1: ny1 });
+            } catch (err) { console.warn('提取选区文本失败:', err); }
+
+            let selImage = null;
+            if (!selectedText) {
+                selImage = einkCropPageRegion(placeholder, { x0: nx0, y0: ny0, x1: nx1, y1: ny1 });
+            }
+
+            einkPendingSelection = {
+                page: pageNum, cx: centerX, cy: centerY,
+                text: selectedText, image: selImage
+            };
+            showReaderSelectionMenu({ left: minX, right: maxX, top: minY, width: maxX - minX });
+        }
+
+        // 收集框选矩形内的 PDF 文本（按阅读顺序拼接）
+        async function einkExtractTextInBox(pageNum, box) {
+            if (!pdfDoc) return '';
+            const pageData = pageElements[pageNum];
+            if (!pageData || !pageData.viewport) return '';
+            const viewport = pageData.viewport;
+            const vw = viewport.width, vh = viewport.height;
+            const bx0 = box.x0 * vw, bx1 = box.x1 * vw;
+            const by0 = box.y0 * vh, by1 = box.y1 * vh;
+
+            const page = await pdfDoc.getPage(pageNum);
+            const tc = await page.getTextContent();
+            const parts = [];
+            tc.items.forEach(item => {
+                if (!item.str || !item.transform) return;
+                // transform[4],[5] 是文本基线左端的 PDF 坐标 → 视口像素
+                const pt = viewport.convertToViewportPoint(item.transform[4], item.transform[5]);
+                const w = (item.width || 0) * viewport.scale;
+                const h = (item.height || Math.hypot(item.transform[2], item.transform[3]) || 0) * viewport.scale;
+                const cx = pt[0] + w / 2;       // 文本块水平中点
+                const cy = pt[1] - h / 2;       // 基线上方约半个字高
+                if (cx >= bx0 && cx <= bx1 && cy >= by0 && cy <= by1) {
+                    parts.push(item.str);
+                }
+            });
+            return parts.join('').replace(/\s+/g, ' ').trim();
+        }
+
+        // 把页面框选区域裁剪成图片 dataURL（PDF 画布 + 批注合并）
+        function einkCropPageRegion(placeholder, box) {
+            const canvases = placeholder.querySelectorAll('canvas');
+            if (!canvases.length) return null;
+            const base = canvases[0];
+            const cw = base.width, ch = base.height;
+            const sx = Math.max(0, Math.floor(box.x0 * cw));
+            const sy = Math.max(0, Math.floor(box.y0 * ch));
+            const sw = Math.max(1, Math.ceil((box.x1 - box.x0) * cw));
+            const sh = Math.max(1, Math.ceil((box.y1 - box.y0) * ch));
+            const crop = document.createElement('canvas');
+            crop.width = sw; crop.height = sh;
+            const ctx = crop.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, sw, sh);
+            canvases.forEach(c => {
+                try { ctx.drawImage(c, sx, sy, sw, sh, 0, 0, sw, sh); } catch (err) {}
+            });
+            try { return crop.toDataURL('image/jpeg', 0.7); } catch (err) { return null; }
+        }
+
+        let einkPendingSelection = null;
+        let readerSelMenuRect = null;
+
+        function showReaderSelectionMenu(rect) {
+            const menu = document.getElementById('readerSelectionMenu');
+            if (!menu) return;
+            readerSelMenuRect = rect;
+            menu.style.left = Math.max(10, rect.left + rect.width / 2 - 110) + 'px';
+            menu.style.top = Math.max(10, rect.top - 50) + 'px';
+            menu.classList.add('show');
+            const inp = document.getElementById('readerAskInput');
+            if (inp) { inp.value = ''; }
+        }
+
+        function hideReaderSelectionMenu() {
+            const menu = document.getElementById('readerSelectionMenu');
+            if (menu) menu.classList.remove('show');
+        }
+
+        // 回车发送 / 点击别处关闭
+        document.addEventListener('keydown', (e) => {
+            const menu = document.getElementById('readerSelectionMenu');
+            if (e.key === 'Enter' && menu && menu.classList.contains('show')) {
+                e.preventDefault();
+                askAIAboutReaderSelection();
+            }
+        });
+        document.addEventListener('pointerdown', (e) => {
+            const menu = document.getElementById('readerSelectionMenu');
+            if (!menu || !menu.classList.contains('show')) return;
+            if (!e.target.closest('#readerSelectionMenu')) {
+                hideReaderSelectionMenu();
+                einkPendingSelection = null;
+                clearReaderTextSelection();
+            }
+        }, true);
+
+        // 对框选内容"问AI"：照搬讲义选择问AI的提示词与调用，但结果以评论圆点+悬浮框呈现
+        async function askAIAboutReaderSelection() {
+            const sel = einkPendingSelection;
+            if (!sel || !currentDoc) { hideReaderSelectionMenu(); return; }
+            const userDesc = (document.getElementById('readerAskInput').value || '').trim();
+            hideReaderSelectionMenu();
+            clearReaderTextSelection();
+            showToast(i18n('toast_asking_ai'));
+
+            let messages;
+            if (sel.text) {
+                let prompt;
+                if (userDesc) {
+                    prompt = `以下是选中的数学内容：\n\n"${sel.text}"\n\n用户的问题/补充说明：${userDesc}\n\n请针对用户的问题简洁回答，不要重复问题。`;
+                } else {
+                    prompt = `请简洁解释以下数学内容，直接给出解释，不要重复问题：\n\n"${sel.text}"`;
+                }
+                messages = [{ role: 'user', content: prompt }];
+            } else if (sel.image) {
+                const tip = userDesc
+                    ? `这是从文档中框选的内容（图片）。用户的问题/补充说明：${userDesc}\n请针对用户的问题简洁回答，不要重复问题。`
+                    : '请简洁解释图片中框选的数学/文档内容，直接给出解释，不要重复问题。';
+                messages = [{ role: 'user', content: [
+                    { type: 'image_url', image_url: { url: sel.image } },
+                    { type: 'text', text: tip }
+                ] }];
+            } else {
+                einkPendingSelection = null;
+                return;
+            }
+
+            try {
+                const aiResponse = await callAI(i18n('prompt_math_explain'), messages, { maxTokens: 2048 }) || i18n('chat_no_ai_answer');
+                addDocAiComment(sel.page, sel.cx, sel.cy, aiResponse, sel.text || '');
+                showToast(i18n('toast_note_added'));
+            } catch (err) {
+                console.error(err);
+                showToast(i18n('toast_ai_request_failed') + (err && err.message ? err.message : ''));
+            } finally {
+                einkPendingSelection = null;
+            }
+        }
+
+        // 以 note 标注形式保存 AI 评论（ai:true），复用计数圆点 marker + 悬浮框渲染
+        function addDocAiComment(page, x, y, text, question) {
+            const doc = ensureDocAnnotations(currentDoc.id);
+            if (!doc) return;
+            doc.annotations.push({
+                page, type: 'note', ai: true, x, y, text,
+                question: question || '',
+                createdAt: new Date().toISOString()
+            });
+            doc.annotationsUpdatedAt = Date.now();
+            saveData();
+            if (pdfDoc && currentPage === page) {
+                refreshPageMarkers(page);
+                // 自动弹出刚生成的评论气泡
+                setTimeout(() => {
+                    const pd = pageElements[page];
+                    if (!pd || !pd.placeholder) return;
+                    const markers = pd.placeholder.querySelectorAll('.annotation-marker');
+                    const last = markers[markers.length - 1];
+                    if (last && last.onclick) last.onclick({ stopPropagation: () => {} });
+                }, 60);
+            }
+        }
+
+        // 清掉阅读器文字层里的原生选区（翻页/切模式/关阅读器时）
+        function clearReaderTextSelection() {
+            try {
+                const s = window.getSelection();
+                if (s && s.rangeCount) s.removeAllRanges();
+            } catch (e) {}
+        }
+
+        // 为某页构建透明可选文字层（pdf.js getTextContent），让触控笔能像 Chrome 一样逐字选中
+        async function buildReaderTextLayer(pageNum) {
+            if (!pdfDoc) return;
+            const pageData = pageElements[pageNum];
+            if (!pageData || !pageData.placeholder || !pageData.viewport) return;
+            if (pageData.textLayer && pageData.textLayer.isConnected) {
+                pageData.textLayer.style.pointerEvents = (einkMode && !penMode) ? 'auto' : 'none';
+                return;
+            }
+            const placeholder = pageData.placeholder;
+            const viewport = pageData.viewport;
+            const scale = viewport.scale || 1;
+
+            const layer = document.createElement('div');
+            layer.className = 'reader-text-layer';
+            layer.style.width = viewport.width + 'px';
+            layer.style.height = viewport.height + 'px';
+            layer.style.pointerEvents = (einkMode && !penMode) ? 'auto' : 'none';
+            pageData.textLayer = layer;
+            attachReaderTextLayerInput(layer, pageNum);
+            placeholder.appendChild(layer);
+
+            let tc;
+            try {
+                const page = await pdfDoc.getPage(pageNum);
+                tc = await page.getTextContent();
+            } catch (e) { return; }
+            // 期间页面被重渲染/移除则放弃
+            if (pageData.textLayer !== layer || !layer.isConnected) return;
+
+            const frag = document.createDocumentFragment();
+            const pending = [];
+            tc.items.forEach(item => {
+                if (!item.str) return;
+                const tr = item.transform;
+                const p = viewport.convertToViewportPoint(tr[4], tr[5]); // 文本基线左端(px, 左上原点)
+                const fs = Math.hypot(tr[2], tr[3]) * scale;
+                if (!(fs > 0)) return;
+                const span = document.createElement('span');
+                span.textContent = item.str;
+                span.style.left = p[0] + 'px';
+                span.style.top = (p[1] - fs) + 'px';
+                span.style.fontSize = fs + 'px';
+                span.style.fontFamily = 'sans-serif';
+                frag.appendChild(span);
+                pending.push({ span: span, target: (item.width || 0) * scale });
+            });
+            layer.appendChild(frag);
+            pageData.hasText = pending.length > 0;
+            // 第二遍：按实测宽度做水平缩放，让透明文字与画布字形大致对齐（提升选区精度）
+            pending.forEach(({ span, target }) => {
+                const w = span.offsetWidth;
+                if (w > 0 && target > 0) span.style.transform = 'scaleX(' + (target / w) + ')';
+            });
+        }
+
+        // 文字层上的触控笔/手指交互（仅墨水屏评论模式生效）
+        function attachReaderTextLayerInput(layer, pageNum) {
+            let pen = null;     // { mode:'text'|'lasso', pointerId, anchor }
+            let finger = null;  // { x, y, t, moved }
+
+            layer.addEventListener('pointerdown', function (e) {
+                if (!einkMode || penMode) return;
+                if (booxReaderIsPen(e)) {
+                    const el = document.elementFromPoint(e.clientX, e.clientY);
+                    const onText = el && el.tagName === 'SPAN' && layer.contains(el)
+                        && typeof document.caretRangeFromPoint === 'function';
+                    if (onText) {
+                        // 触控笔压在文字上 → caret 选字（原生高亮，像 Chrome）
+                        pen = { mode: 'text', pointerId: e.pointerId, anchor: null };
+                        try { layer.setPointerCapture(e.pointerId); } catch (err) {}
+                        const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+                        if (r) {
+                            pen.anchor = { node: r.startContainer, offset: r.startOffset };
+                            const s = window.getSelection();
+                            s.removeAllRanges(); s.addRange(r.cloneRange());
+                        }
+                    } else {
+                        // 空白/扫描件 → 套索（抬笔后取词或截图）
+                        pen = { mode: 'lasso', pointerId: e.pointerId };
+                        einkSelectStart(layer, e);
+                    }
+                    e.preventDefault();
+                    return;
+                }
+                // 手指：阻断原生选字，按点触处理（翻页/看评论）
+                finger = { x: e.clientX, y: e.clientY, t: Date.now(), moved: false };
+                e.preventDefault();
+            });
+
+            layer.addEventListener('pointermove', function (e) {
+                if (pen && pen.pointerId === e.pointerId) {
+                    if (isPinching) { if (pen.mode === 'lasso') einkSelectCancel(); pen = null; return; }
+                    if (pen.mode === 'text') {
+                        const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+                        if (r && pen.anchor) {
+                            try {
+                                window.getSelection().setBaseAndExtent(
+                                    pen.anchor.node, pen.anchor.offset, r.startContainer, r.startOffset);
+                            } catch (err) {}
+                        }
+                    } else {
+                        einkSelectMove(e);
+                    }
+                    e.preventDefault();
+                    return;
+                }
+                if (finger && (Math.abs(e.clientX - finger.x) > 10 || Math.abs(e.clientY - finger.y) > 10)) {
+                    finger.moved = true;
+                }
+            });
+
+            layer.addEventListener('pointerup', function (e) {
+                if (pen && pen.pointerId === e.pointerId) {
+                    const mode = pen.mode; pen = null;
+                    try { layer.releasePointerCapture(e.pointerId); } catch (err) {}
+                    if (mode === 'text') {
+                        finalizeReaderTextSelection(pageNum);
+                    } else {
+                        einkSelectEnd(e); // 套索 → 取词/截图
+                    }
+                    e.preventDefault();
+                    return;
+                }
+                if (finger) {
+                    const ft = finger; finger = null;
+                    if (ft.moved || isPinching) return;
+                    if (Date.now() - ft.t > 700) return;
+                    if (einkHandleReaderTap(ft.x, ft.y)) return;
+                    einkPageTurnByClientX(ft.x);
+                }
+            });
+
+            layer.addEventListener('pointercancel', function () {
+                if (pen) { if (pen.mode === 'lasso') einkSelectCancel(); pen = null; }
+            });
+        }
+
+        // 触控笔选字抬笔：取选中文本 + 选区中心，弹"问AI"菜单
+        function finalizeReaderTextSelection(pageNum) {
+            const s = window.getSelection();
+            const text = s ? s.toString().trim() : '';
+            if (!text || s.rangeCount === 0) return;
+            const rect = s.getRangeAt(0).getBoundingClientRect();
+            const pageData = pageElements[pageNum];
+            if (!pageData || !pageData.placeholder) return;
+            const pr = pageData.placeholder.getBoundingClientRect();
+            if (pr.width <= 0 || pr.height <= 0) return;
+            const clamp01 = v => Math.max(0, Math.min(1, v));
+            const cx = clamp01(((rect.left + rect.right) / 2 - pr.left) / pr.width);
+            const cy = clamp01(((rect.top + rect.bottom) / 2 - pr.top) / pr.height);
+            einkPendingSelection = { page: pageNum, cx: cx, cy: cy, text: text, image: null };
+            showReaderSelectionMenu({ left: rect.left, right: rect.right, top: rect.top, width: rect.width });
+        }
+
+        // 按当前 墨水屏/画笔 模式调整页面分层：评论模式把可见页抬到翻页热区之上，
+        // 让文字层接管触控笔选字；画笔模式还原（书写交回原生 SDK）。
+        function applyReaderEinkInputMode() {
+            const commentMode = einkMode && !penMode;
+            for (let i = 1; i <= totalPages; i++) {
+                const pd = pageElements[i];
+                if (!pd || !pd.placeholder) continue;
+                const visible = pd.placeholder.classList.contains('eink-visible');
+                pd.placeholder.style.zIndex = (commentMode && visible) ? '37' : '';
+                if (pd.textLayer) pd.textLayer.style.pointerEvents = commentMode ? 'auto' : 'none';
+            }
+            // 已渲染的当前页在此建文字层；未渲染的由 renderSinglePage 末尾负责（避免被 innerHTML 清空）
+            if (commentMode && currentPage >= 1 && pageElements[currentPage]
+                    && pageElements[currentPage].rendered) {
+                buildReaderTextLayer(currentPage);
             }
         }
 
