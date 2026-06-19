@@ -8916,6 +8916,7 @@
 
             pageWrapper.addEventListener('touchstart', (e) => {
                 if (penMode) { e.preventDefault(); return; }
+                if (einkMode && window.__booxInput && window.__booxInput.isPen()) { return; }
                 lpMoved = false;
                 lpStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                 lpTimer = setTimeout(() => {
