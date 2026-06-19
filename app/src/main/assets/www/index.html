@@ -6070,6 +6070,7 @@
                 rec_unsupported:'当前浏览器不支持录音',rec_too_short:'录音时间太短，已取消',rec_saving:'正在保存录音...',
                 rec_transcribing:'正在生成录音转写纪要...',rec_done:'录音转写纪要已生成',rec_note_badge:'录音纪要',
                 rec_material_name:'课堂录音 {0}',rec_keep_awake_hint:'录音中，请保持页面打开',
+                regen_note:'重新生成讲义',confirm_regen_note:'重新生成讲义？已有的相关笔记将被替换。',toast_regen_note_start:'正在重新生成讲义...',toast_regen_chunk_progress:'正在处理第 {0}/{1} 段音频...',delete_material:'删除素材',
                 prompt_rec_sys:'你是一个专业的课堂/会议录音转写与纪要整理助手。请仔细聆听音频，先准确转写其中的语音内容，再整理成一份详细、条理清晰的录音转写纪要。\n\n纪要格式要求：\n1. 主标题：本次录音内容总览（一句话概括）\n2. 使用多个次级标题组织内容，每个次级标题格式为：## [小节标题] {ref:{0}}\n3. 在"逐段转写"小节中，按时间顺序详细记录讲述/讨论的主要内容，尽量保留关键论述、例子和结论\n4. 在"要点总结"小节中，提炼核心知识点、结论与待办事项\n5. 数学公式用 LaTeX：行内 $...$，独立 $$...$$\n6. 若音频中有多位说话者，请尽量区分发言者\n7. 内容详实、严谨，忠实于音频原意，不要编造未出现的内容',
                 prompt_rec_user:'请转写并整理这段录音的详细纪要。来源：{0} - {1}，引用编号：{2}',
                 storage_status_yes:'✅ 已持久化',storage_status_no:'⚠️ 未持久化（可能被清理）',
@@ -6249,6 +6250,7 @@
                 rec_unsupported:'Recording is not supported in this browser',rec_too_short:'Recording too short, cancelled',rec_saving:'Saving recording...',
                 rec_transcribing:'Generating recording transcript minutes...',rec_done:'Recording minutes generated',rec_note_badge:'Recording minutes',
                 rec_material_name:'Class recording {0}',rec_keep_awake_hint:'Recording, please keep this page open',
+                regen_note:'Regenerate Notes',confirm_regen_note:'Regenerate notes? Existing notes for this material will be replaced.',toast_regen_note_start:'Regenerating notes...',toast_regen_chunk_progress:'Processing audio segment {0}/{1}...',delete_material:'Delete Material',
                 prompt_rec_sys:'You are a professional assistant for transcribing classroom/meeting recordings and producing minutes. Listen carefully to the audio, accurately transcribe the speech, then organize it into detailed, well-structured recording minutes.\n\nFormat:\n1. Main title: one-line overview of the recording\n2. Subtitles formatted as: ## [Section title] {ref:{0}}\n3. In a "Transcript" section, record the main content chronologically, preserving key arguments, examples and conclusions\n4. In a "Key points" section, distill core takeaways, conclusions and action items\n5. LaTeX: $...$ inline, $$...$$ display\n6. If there are multiple speakers, try to distinguish them\n7. Be detailed, rigorous and faithful to the audio; do not fabricate content',
                 prompt_rec_user:'Transcribe and produce detailed minutes for this recording. Source: {0} - {1}, ref: {2}',
                 storage_status_yes:'✅ Persisted',storage_status_no:'⚠️ Not persisted',
@@ -6428,6 +6430,7 @@
                 rec_unsupported:'L\'enregistrement n\'est pas pris en charge',rec_too_short:'Enregistrement trop court, annulé',rec_saving:'Enregistrement en cours de sauvegarde...',
                 rec_transcribing:'Génération du compte rendu de l\'enregistrement...',rec_done:'Compte rendu généré',rec_note_badge:'Compte rendu',
                 rec_material_name:'Enregistrement {0}',rec_keep_awake_hint:'Enregistrement, gardez cette page ouverte',
+                regen_note:'Régénérer notes',confirm_regen_note:'Régénérer les notes ? Les notes existantes seront remplacées.',toast_regen_note_start:'Régénération en cours...',toast_regen_chunk_progress:'Traitement segment audio {0}/{1}...',delete_material:'Supprimer',
                 prompt_rec_sys:'Tu es un assistant professionnel pour transcrire des enregistrements de cours/réunions et produire des comptes rendus. Écoute attentivement l\'audio, transcris fidèlement la parole, puis organise un compte rendu détaillé et structuré.\n\nFormat :\n1. Titre principal : aperçu en une ligne\n2. Sous-titres : ## [Titre de section] {ref:{0}}\n3. Dans une section « Transcription », note le contenu chronologiquement en conservant les arguments, exemples et conclusions clés\n4. Dans une section « Points clés », dégage les conclusions et actions à mener\n5. LaTeX : $...$ en ligne, $$...$$ en bloc\n6. Distingue les locuteurs si possible\n7. Sois détaillé, rigoureux et fidèle à l\'audio ; n\'invente rien',
                 prompt_rec_user:'Transcris et produis un compte rendu détaillé de cet enregistrement. Source : {0} - {1}, réf : {2}',
                 storage_status_yes:'✅ Persisté',storage_status_no:'⚠️ Non persisté',
@@ -18024,9 +18027,13 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             menu.className = 'longpress-menu';
             menu.id = 'longpressMenu';
             menu.innerHTML = `
+                <button class="longpress-menu-item" onclick="regenerateClassroomNote('${type}','${folderId}','${sessionId}','${matId}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                    ${i18n('regen_note')}
+                </button>
                 <button class="longpress-menu-item danger" onclick="deleteClassroomMaterial('${type}','${folderId}','${sessionId}','${matId}')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                    删除素材
+                    ${i18n('delete_material')}
                 </button>`;
             document.body.appendChild(overlay);
             document.body.appendChild(menu);
@@ -18034,7 +18041,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             let x = touch.clientX || e.clientX;
             let y = touch.clientY || e.clientY;
             if (x + 140 > window.innerWidth) x = window.innerWidth - 150;
-            if (y + 60 > window.innerHeight) y = window.innerHeight - 70;
+            if (y + 120 > window.innerHeight) y = window.innerHeight - 130;
             menu.style.left = x + 'px';
             menu.style.top = y + 'px';
         }
@@ -18056,6 +18063,151 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             debouncedChatSync();
             renderClassroomSessionDetail(folder, session, type);
             showToast(i18n('toast_deleted'));
+        }
+
+        async function regenerateClassroomNote(type, folderId, sessionId, matId) {
+            closeLongPressMenu();
+            if (!confirm(i18n('confirm_regen_note'))) return;
+            const folder = getClassroomFolder(type, folderId);
+            if (!folder) return;
+            const session = (folder.sessions || []).find(s => s.id === sessionId);
+            if (!session || !session.sourceFolder) return;
+            const matIdx = session.sourceFolder.findIndex(m => m.id === matId);
+            if (matIdx < 0) return;
+            const material = session.sourceFolder[matIdx];
+
+            // Remove existing notes for this material
+            if (session.notes && session.notes.length > 0) {
+                for (let i = session.notes.length - 1; i >= 0; i--) {
+                    if (session.notes[i].materialId === matId) {
+                        const drawKey = `classroomDrawing_${folderId}_${sessionId}_${i}`;
+                        if (appData.lectureDrawings && appData.lectureDrawings[drawKey]) delete appData.lectureDrawings[drawKey];
+                        if (appData.lectureStrokesData && appData.lectureStrokesData[drawKey]) delete appData.lectureStrokesData[drawKey];
+                        session.notes.splice(i, 1);
+                    }
+                }
+            }
+            saveData();
+            if (currentClassroomSession && currentClassroomSession.sessionId === sessionId) {
+                renderClassroomSessionDetail(folder, session, type);
+            }
+
+            showToast(i18n('toast_regen_note_start'));
+
+            if (material.type === 'recording') {
+                await generateClassroomRecordingNoteChunked(type, folderId, sessionId, matIdx);
+            } else {
+                await generateClassroomNoteForMaterial(type, folderId, sessionId, matIdx);
+            }
+        }
+
+        // Gemini Flash audio limits: ~18MB inline, Files API for larger.
+        // For very long recordings, split into chunks and process sequentially.
+        const GEMINI_AUDIO_CHUNK_BYTES = 18 * 1024 * 1024; // 18MB per chunk
+
+        async function generateClassroomRecordingNoteChunked(type, folderId, sessionId, materialIndex) {
+            const folder = getClassroomFolder(type, folderId);
+            if (!folder) return;
+            const session = (folder.sessions || []).find(s => s.id === sessionId);
+            if (!session || !session.sourceFolder[materialIndex]) return;
+            const material = session.sourceFolder[materialIndex];
+
+            await ensureMaterialData(material);
+            if (!material.data) { showToast(i18n('toast_gen_failed')); return; }
+
+            const base64Data = material.data.split(',')[1];
+            const audioMime = (material.mimeType || 'audio/webm').split(';')[0];
+            const approxBytes = Math.floor(base64Data.length * 3 / 4);
+
+            // If small enough, use original single-call path
+            if (approxBytes <= GEMINI_AUDIO_CHUNK_BYTES) {
+                return await generateClassroomRecordingNote(type, folderId, sessionId, materialIndex);
+            }
+
+            // Split into chunks and process sequentially
+            const numChunks = Math.ceil(approxBytes / GEMINI_AUDIO_CHUNK_BYTES);
+            const chunkB64Size = Math.ceil(base64Data.length / numChunks);
+            // Align to 4 chars (base64 block boundary)
+            const alignedChunkSize = Math.ceil(chunkB64Size / 4) * 4;
+
+            showToast(i18n('rec_transcribing'));
+            const allResults = [];
+
+            for (let c = 0; c < numChunks; c++) {
+                showToast(i18n('toast_regen_chunk_progress', c + 1, numChunks));
+                const start = c * alignedChunkSize;
+                const end = Math.min(start + alignedChunkSize, base64Data.length);
+                const chunkB64 = base64Data.slice(start, end);
+
+                const systemPrompt = i18n('prompt_rec_sys', material.ref);
+                const userMsg = i18n('prompt_rec_user', folder.name, session.title, material.ref)
+                    + (numChunks > 1 ? `\n\n[Part ${c + 1}/${numChunks}]` : '');
+
+                try {
+                    const msgContent = [{
+                        role: 'user',
+                        content: [
+                            { type: 'audio', audio: { data: chunkB64, mimeType: audioMime, format: audioMime.split('/')[1] || 'webm' } },
+                            { type: 'text', text: userMsg }
+                        ]
+                    }];
+                    const result = await callAI(systemPrompt, msgContent, { maxTokens: 8192 });
+                    if (result) allResults.push(result);
+                } catch (err) {
+                    console.error(`Chunk ${c + 1}/${numChunks} failed:`, err);
+                    allResults.push(`[Part ${c + 1} generation failed: ${err.message}]`);
+                }
+            }
+
+            if (allResults.length === 0) {
+                showToast(i18n('toast_gen_failed'));
+                return;
+            }
+
+            // Combine results
+            const combined = allResults.length === 1 ? allResults[0]
+                : allResults.map((r, i) => `# Part ${i + 1}\n\n${r}`).join('\n\n---\n\n');
+
+            const lines = combined.split('\n');
+            let mainTitle = '';
+            const subtitles = [];
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!mainTitle && (trimmed.startsWith('# ') || trimmed.startsWith('## '))) {
+                    mainTitle = trimmed.replace(/^#+\s*/, '').replace(/\{ref:[^}]*\}/g, '').replace(/^Part \d+\s*/, '').trim();
+                }
+                const refMatch = trimmed.match(/\{ref:([^}]+)\}/);
+                if (refMatch && trimmed.startsWith('## ')) {
+                    subtitles.push({
+                        text: trimmed.replace(/^#+\s*/, '').replace(/\{ref:[^}]*\}/g, '').trim(),
+                        ref: refMatch[1]
+                    });
+                }
+            }
+            if (!mainTitle) mainTitle = material.ref + ' ' + i18n('rec_note_badge');
+
+            if (!session.notes) session.notes = [];
+            session.notes.push({
+                id: 'cnote_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                title: mainTitle,
+                subtitles: subtitles,
+                content: combined,
+                materialRef: material.ref,
+                materialId: material.id,
+                isRecordingNote: true,
+                generatedAt: new Date().toISOString(),
+                progress: 0,
+                maxProgress: 0,
+                status: 'ready'
+            });
+
+            saveData();
+            debouncedChatSync();
+            showToast(i18n('rec_done'));
+
+            if (currentClassroomSession && currentClassroomSession.sessionId === sessionId) {
+                renderClassroomSessionDetail(folder, session, type);
+            }
         }
 
         // 笔记长按
