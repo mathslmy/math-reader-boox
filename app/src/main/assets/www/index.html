@@ -18077,9 +18077,16 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             if (matIdx < 0) return;
             const material = session.sourceFolder[matIdx];
 
-            // 删除该素材关联的所有旧笔记
-            if (session.notes) {
-                session.notes = session.notes.filter(n => n.materialId !== matId);
+            // 删除该素材关联的所有旧笔记及其绘图数据
+            if (session.notes && session.notes.length > 0) {
+                for (let i = session.notes.length - 1; i >= 0; i--) {
+                    if (session.notes[i].materialId === matId) {
+                        const drawKey = `classroomDrawing_${folderId}_${sessionId}_${i}`;
+                        if (appData.lectureDrawings && appData.lectureDrawings[drawKey]) delete appData.lectureDrawings[drawKey];
+                        if (appData.lectureStrokesData && appData.lectureStrokesData[drawKey]) delete appData.lectureStrokesData[drawKey];
+                        session.notes.splice(i, 1);
+                    }
+                }
                 saveData();
             }
 
