@@ -18492,29 +18492,46 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
 
             const matId = 'mat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
             const ref = generateClassroomRef(folder, session, 0);
-            // 录音文件存入 IndexedDB（与其它源素材相同的本地存储逻辑）
+            const idbKey = 'classroom_' + matId;
+
+            // 录音文件存入 IndexedDB 并验证写入
             try {
-                await saveFileData('classroom_' + matId, base64);
+                await saveFileData(idbKey, base64);
+                const verify = await getFileData(idbKey);
+                if (!verify) throw new Error('录音写入验证失败');
             } catch (e) {
                 console.error('保存录音到 IndexedDB 失败:', e);
+                showToast(i18n('toast_save_failed') || '录音保存失败，请重试');
+                return;
             }
 
             const now = new Date();
             const stamp = now.toLocaleString();
+            // 先不设 data，避免 saveData() 深拷贝时内存溢出导致白屏崩溃
             const material = {
                 id: matId,
                 name: i18n('rec_material_name', stamp),
                 ref: ref,
-                type: 'recording',   // 标记为录音类型：本地存储但不云同步
+                type: 'recording',
                 mimeType: mimeType,
-                data: base64,
                 duration: durationSec,
                 uploadedAt: now.toISOString(),
                 retentionStart: null
             };
             session.sourceFolder.push(material);
 
-            saveData();
+            try {
+                saveData();
+            } catch (e) {
+                console.error('saveData 失败，回滚录音元数据:', e);
+                session.sourceFolder.pop();
+                showToast(i18n('toast_save_failed') || '录音保存失败，请重试');
+                return;
+            }
+
+            // saveData 成功后再设 data，供当前会话内存使用
+            material.data = base64;
+
             // 注意：录音文件不云同步，因此不调用 triggerSyncOnFileChange。
             // 但素材元数据会随 classroom 元数据同步（占位），转写纪要正常云同步。
             debouncedChatSync();
@@ -18622,6 +18639,8 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             if (!session.sourceFolder) session.sourceFolder = [];
 
             showToast(i18n('toast_processing'));
+            const pendingDataMap = new Map();
+            const startIdx = session.sourceFolder.length;
 
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
@@ -18638,10 +18657,15 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 });
 
                 // 把base64存到IndexedDB，不放localStorage
+                const idbKey = 'classroom_' + matId;
                 try {
-                    await saveFileData('classroom_' + matId, base64);
+                    await saveFileData(idbKey, base64);
+                    const verify = await getFileData(idbKey);
+                    if (!verify) throw new Error('素材写入验证失败');
                 } catch (e) {
                     console.error('保存素材到IndexedDB失败:', e);
+                    showToast(i18n('toast_save_failed') || '素材保存失败');
+                    continue;
                 }
 
                 const material = {
@@ -18650,24 +18674,31 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                     ref: ref,
                     type: isImage ? 'image' : 'file',
                     mimeType: file.type,
-                    data: base64,  // 内存中保留，用于当前会话显示和AI生成
                     uploadedAt: new Date().toISOString(),
                     retentionStart: isImage ? new Date().toISOString() : null
                 };
 
                 session.sourceFolder.push(material);
+                pendingDataMap.set(matId, base64);
             }
 
             saveData();
+            // saveData 完成后恢复内存中的 data 引用
+            for (const mat of session.sourceFolder) {
+                if (pendingDataMap.has(mat.id)) {
+                    mat.data = pendingDataMap.get(mat.id);
+                }
+            }
+            pendingDataMap.clear();
             debouncedChatSync();
             // 同步每个新素材文件到云端
-            for (let i = session.sourceFolder.length - files.length; i < session.sourceFolder.length; i++) {
+            for (let i = startIdx; i < session.sourceFolder.length; i++) {
                 triggerSyncOnFileChange(session.sourceFolder[i].id, 'classroom_upload');
             }
             renderClassroomSessionDetail(folder, session, type);
 
             // Auto-generate AI notes for each uploaded material
-            for (let i = session.sourceFolder.length - files.length; i < session.sourceFolder.length; i++) {
+            for (let i = startIdx; i < session.sourceFolder.length; i++) {
                 generateClassroomNoteForMaterial(type, folderId, sessionId, i);
             }
         }
