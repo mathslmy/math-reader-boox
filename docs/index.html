@@ -6067,7 +6067,7 @@
                 prompt_note_sys:'你是一个专业的学术笔记整理助手。请将上传的{0}内容转换成清晰易读的笔记。\n\n笔记格式要求：\n1. 主标题：笔记内容总览（一句话概括）\n2. 使用多个次级标题组织内容，每个次级标题格式为：## [标题内容] {ref:{1}}\n3. 内容要条理清晰，补充必要的解释\n4. 使用LaTeX格式：行内公式用 $...$ ，独立公式用 $$...$$\n5. 保持学术严谨性',
                 prompt_note_user:'请整理以下内容为笔记。来源：{0} - {1}，引用编号：{2}',
                 rec_start:'开始录音',rec_stop:'停止录音（点击结束）',rec_mic_denied:'无法访问麦克风，请检查权限设置',
-                rec_unsupported:'当前浏览器不支持录音',rec_too_short:'录音时间太短，已取消',rec_saving:'正在保存录音...',
+                rec_unsupported:'当前浏览器不支持录音',rec_too_short:'录音时间太短，已取消',rec_saving:'正在保存录音...',rec_save_failed:'录音保存失败',rec_save_downloaded:'存储失败，录音已下载到设备文件中',
                 rec_transcribing:'正在生成录音转写纪要...',rec_done:'录音转写纪要已生成',rec_note_badge:'录音纪要',
                 rec_material_name:'课堂录音 {0}',rec_keep_awake_hint:'录音中，请保持页面打开',
                 mat_regenerate_note:'重新生成讲义',mat_regenerating:'正在重新生成讲义...',mat_regen_chunk:'正在处理录音第 {0}/{1} 部分...',mat_regen_done:'讲义已重新生成',confirm_regenerate_note:'确定要重新生成此素材的讲义吗？现有讲义将被替换。',mat_regen_combining:'正在合并录音纪要...',
@@ -6247,7 +6247,7 @@
                 prompt_note_sys:'You are a professional academic note-taking assistant. Convert the uploaded {0} content into clear, readable notes.\n\nFormat:\n1. Main title: one-line overview\n2. Subtitles formatted as: ## [Title] {ref:{1}}\n3. Clear organization with explanations\n4. LaTeX: $...$ inline, $$...$$ display\n5. Academic rigor',
                 prompt_note_user:'Organize into notes. Source: {0} - {1}, ref: {2}',
                 rec_start:'Start recording',rec_stop:'Stop recording (tap to finish)',rec_mic_denied:'Cannot access microphone, please check permissions',
-                rec_unsupported:'Recording is not supported in this browser',rec_too_short:'Recording too short, cancelled',rec_saving:'Saving recording...',
+                rec_unsupported:'Recording is not supported in this browser',rec_too_short:'Recording too short, cancelled',rec_saving:'Saving recording...',rec_save_failed:'Failed to save recording',rec_save_downloaded:'Storage full — recording downloaded to device',
                 rec_transcribing:'Generating recording transcript minutes...',rec_done:'Recording minutes generated',rec_note_badge:'Recording minutes',
                 rec_material_name:'Class recording {0}',rec_keep_awake_hint:'Recording, please keep this page open',
                 mat_regenerate_note:'Regenerate notes',mat_regenerating:'Regenerating notes...',mat_regen_chunk:'Processing recording part {0}/{1}...',mat_regen_done:'Notes regenerated',confirm_regenerate_note:'Regenerate notes for this material? Existing notes will be replaced.',mat_regen_combining:'Combining recording minutes...',
@@ -6427,7 +6427,7 @@
                 prompt_note_sys:'Tu es un assistant de prise de notes académiques. Convertis le contenu {0} en notes claires.\n\nFormat :\n1. Titre principal : aperçu en une ligne\n2. Sous-titres : ## [Titre] {ref:{1}}\n3. Organisation claire\n4. LaTeX : $...$ en ligne, $$...$$ en bloc\n5. Rigueur académique',
                 prompt_note_user:'Organise en notes. Source : {0} - {1}, réf : {2}',
                 rec_start:'Démarrer l\'enregistrement',rec_stop:'Arrêter (toucher pour terminer)',rec_mic_denied:'Impossible d\'accéder au micro, vérifiez les autorisations',
-                rec_unsupported:'L\'enregistrement n\'est pas pris en charge',rec_too_short:'Enregistrement trop court, annulé',rec_saving:'Enregistrement en cours de sauvegarde...',
+                rec_unsupported:'L\'enregistrement n\'est pas pris en charge',rec_too_short:'Enregistrement trop court, annulé',rec_saving:'Enregistrement en cours de sauvegarde...',rec_save_failed:'Échec de la sauvegarde',rec_save_downloaded:'Stockage plein — enregistrement téléchargé sur l\'appareil',
                 rec_transcribing:'Génération du compte rendu de l\'enregistrement...',rec_done:'Compte rendu généré',rec_note_badge:'Compte rendu',
                 rec_material_name:'Enregistrement {0}',rec_keep_awake_hint:'Enregistrement, gardez cette page ouverte',
                 mat_regenerate_note:'Régénérer les notes',mat_regenerating:'Régénération des notes...',mat_regen_chunk:'Traitement de la partie {0}/{1}...',mat_regen_done:'Notes régénérées',confirm_regenerate_note:'Régénérer les notes ? Les notes existantes seront remplacées.',mat_regen_combining:'Fusion des comptes rendus...',
@@ -18077,9 +18077,16 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             if (matIdx < 0) return;
             const material = session.sourceFolder[matIdx];
 
-            // 删除该素材关联的所有旧笔记
-            if (session.notes) {
-                session.notes = session.notes.filter(n => n.materialId !== matId);
+            // 删除该素材关联的所有旧笔记及其绘图数据
+            if (session.notes && session.notes.length > 0) {
+                for (let i = session.notes.length - 1; i >= 0; i--) {
+                    if (session.notes[i].materialId === matId) {
+                        const drawKey = `classroomDrawing_${folderId}_${sessionId}_${i}`;
+                        if (appData.lectureDrawings && appData.lectureDrawings[drawKey]) delete appData.lectureDrawings[drawKey];
+                        if (appData.lectureStrokesData && appData.lectureStrokesData[drawKey]) delete appData.lectureStrokesData[drawKey];
+                        session.notes.splice(i, 1);
+                    }
+                }
                 saveData();
             }
 
@@ -18452,13 +18459,16 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
         }
 
         async function onClassroomRecordingStop() {
+          let blob = null;
+          let mimeType = 'audio/webm';
+          try {
             const durationSec = Math.floor((Date.now() - classroomRecStartTime) / 1000);
-            const mimeType = (classroomRecorder && classroomRecorder.mimeType) || 'audio/webm';
+            mimeType = (classroomRecorder && classroomRecorder.mimeType) || 'audio/webm';
             const recSession = classroomRecSession;
             classroomRecorder = null;
             classroomRecSession = null;
 
-            const blob = new Blob(classroomRecChunks, { type: mimeType });
+            blob = new Blob(classroomRecChunks, { type: mimeType });
             classroomRecChunks = [];
 
             if (durationSec < 1 || blob.size < 1000) {
@@ -18475,21 +18485,39 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
 
             showToast(i18n('rec_saving'));
 
-            // 读取为 base64
-            const base64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+            let base64;
+            try {
+                base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (e) {
+                console.error('录音 FileReader 失败:', e);
+                _recFallbackDownload(blob, mimeType);
+                return;
+            }
 
             const matId = 'mat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
             const ref = generateClassroomRef(folder, session, 0);
-            // 录音文件存入 IndexedDB（与其它源素材相同的本地存储逻辑）
-            try {
-                await saveFileData('classroom_' + matId, base64);
-            } catch (e) {
-                console.error('保存录音到 IndexedDB 失败:', e);
+
+            // IndexedDB 写入（最多重试3次 + 写入验证）
+            let savedToIDB = false;
+            for (let attempt = 0; attempt < 3 && !savedToIDB; attempt++) {
+                try {
+                    await saveFileData('classroom_' + matId, base64);
+                    const verify = await getFileData('classroom_' + matId);
+                    if (verify) savedToIDB = true;
+                } catch (e) {
+                    console.error('IndexedDB 写入失败 (尝试 ' + (attempt + 1) + '/3):', e);
+                    if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+                }
+            }
+
+            if (!savedToIDB) {
+                _recFallbackDownload(blob, mimeType);
+                return;
             }
 
             const now = new Date();
@@ -18498,7 +18526,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 id: matId,
                 name: i18n('rec_material_name', stamp),
                 ref: ref,
-                type: 'recording',   // 标记为录音类型：本地存储但不云同步
+                type: 'recording',
                 mimeType: mimeType,
                 data: base64,
                 duration: durationSec,
@@ -18508,14 +18536,41 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             session.sourceFolder.push(material);
 
             saveData();
-            // 注意：录音文件不云同步，因此不调用 triggerSyncOnFileChange。
-            // 但素材元数据会随 classroom 元数据同步（占位），转写纪要正常云同步。
             debouncedChatSync();
-            renderClassroomSessionDetail(folder, session, recSession.type);
 
-            // 生成详细的课堂/会议录音转写纪要
+            try {
+                renderClassroomSessionDetail(folder, session, recSession.type);
+            } catch (e) {
+                console.error('录音保存后渲染失败:', e);
+            }
+
             const matIndex = session.sourceFolder.length - 1;
             generateClassroomRecordingNote(recSession.type, recSession.folderId, recSession.sessionId, matIndex);
+          } catch (e) {
+            console.error('onClassroomRecordingStop 未预期错误:', e);
+            if (blob) {
+                _recFallbackDownload(blob, mimeType);
+            } else {
+                showToast(i18n('rec_save_failed') || '录音保存失败');
+            }
+          }
+        }
+
+        function _recFallbackDownload(blob, mimeType) {
+            try {
+                const ext = (mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '录音_' + new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-') + '.' + ext;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+                showToast(i18n('rec_save_downloaded') || '存储失败，录音已下载到设备文件中');
+            } catch (e2) {
+                console.error('录音下载也失败:', e2);
+                showToast(i18n('rec_save_failed') || '录音保存失败');
+            }
         }
 
         async function generateClassroomRecordingNote(type, folderId, sessionId, materialIndex) {
