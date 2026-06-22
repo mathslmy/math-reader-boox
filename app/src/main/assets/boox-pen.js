@@ -190,11 +190,13 @@
         if (!found || eraserActive(found.cfg)) {
             activeCfg = found ? found.cfg : null;
             activeEls = found ? found.els : [];
+            for (var g = 0; g < activeEls.length; g++) { installFingerGuard(activeEls[g]); }
             setNative(null);
             return;
         }
         activeCfg = found.cfg;
         activeEls = found.els;
+        for (var g = 0; g < activeEls.length; g++) { installFingerGuard(activeEls[g]); }
         var vw = window.innerWidth, vh = window.innerHeight;
         var rects = found.els.map(function (el) {
             var r = el.getBoundingClientRect();
@@ -216,6 +218,28 @@
     }
     window.addEventListener('scroll', nudge, true);
     window.addEventListener('resize', nudge);
+
+    /* -------- 手掌误触过滤 --------
+     * 原生 SDK 拦截区域内的触控笔输入后以 pointerType='pen' 合成事件回放；
+     * 但手指/手掌触摸仍以 pointerType='touch' 到达 WebView。在 SDK 激活期间
+     * 拦截画布上的非 pen 指针事件，防止右手书写时手掌在画布上留下杂笔。 */
+    function installFingerGuard(el) {
+        if (el._booxFingerGuard) { return; }
+        var block = function (e) {
+            if (lastKey === 'off') { return; }
+            if (e.pointerType === 'pen') { return; }
+            e.stopPropagation();
+            e.preventDefault();
+        };
+        el.addEventListener('pointerdown', block, true);
+        el.addEventListener('pointermove', block, true);
+        el.addEventListener('pointerup', block, true);
+        el.addEventListener('pointercancel', block, true);
+        if ('onpointerrawupdate' in window) {
+            el.addEventListener('pointerrawupdate', block, true);
+        }
+        el._booxFingerGuard = true;
+    }
 
     /* -------- 撤销/重做/清空 后强制重绘，清掉原生层残留笔迹 -------- */
     var refreshTimer = null;
