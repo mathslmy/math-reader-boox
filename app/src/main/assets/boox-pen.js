@@ -111,7 +111,12 @@
     // 可手写画布注册表，按优先级排列（覆盖层在前）。
     // eraserBtn: 对应橡皮按钮（active 时挂起原生直渲染，走 PWA 默认事件路径）
     // eraserToggle: 全局函数名，回放原生笔侧橡皮笔迹时临时切换
+    // suspendFlag: 全局布尔变量名，为真时挂起原生直渲染（套索/文本/图形等非书写工具）
+    // widthFlag: 全局变量名，数值为当前笔刷 CSS 像素宽度（原生直渲染层的笔迹粗细）
     var CONFIGS = [
+        { name: 'notebook',     id: 'nbCanvas',             cssWidth: 2,
+          eraserBtn: 'nbEraserBtn',     eraserToggle: 'toggleNbEraser',
+          suspendFlag: '__nbNativeSuspend', widthFlag: '__nbNativeWidth' },
         { name: 'draft',        id: 'draftCanvas',          cssWidth: 2 },
         { name: 'lectureDraft', id: 'lectureDraftCanvas',   cssWidth: 2 },
         { name: 'lectureDraw',  id: 'lectureDrawCanvas',    cssWidth: 2 },
@@ -159,7 +164,10 @@
     }
 
     function eraserActive(cfg) {
-        if (!cfg || !cfg.eraserBtn) { return false; }
+        if (!cfg) { return false; }
+        // 非书写工具激活时（套索/文本/图形），同样挂起原生直渲染走 PWA 事件路径
+        if (cfg.suspendFlag && window[cfg.suspendFlag]) { return true; }
+        if (!cfg.eraserBtn) { return false; }
         var b = document.getElementById(cfg.eraserBtn);
         return !!(b && b.classList.contains('active'));
     }
@@ -207,7 +215,11 @@
                 Math.round(Math.min(r.bottom, vh) * DPR)
             ];
         });
-        setNative({ rects: rects, width: (found.cfg.cssWidth || 2) * DPR });
+        var cssW = found.cfg.cssWidth || 2;
+        if (found.cfg.widthFlag && Number(window[found.cfg.widthFlag]) > 0) {
+            cssW = Number(window[found.cfg.widthFlag]);
+        }
+        setNative({ rects: rects, width: cssW * DPR });
     }
 
     var tickTimer = setInterval(tick, 350);
