@@ -4570,6 +4570,275 @@
         .toggle-switch.on .toggle-thumb {
             left: 22px;
         }
+
+        /* ==================== 笔记模块（page7 + 笔记本编辑器） ==================== */
+        .nbhome-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            height: 100%;
+            padding: 16px 16px 80px;
+            box-sizing: border-box;
+        }
+        .nbhome-column {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .nbhome-column-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px 10px;
+            flex-shrink: 0;
+        }
+        .nbhome-column-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+        .nbhome-list { flex: 1; overflow-y: auto; padding: 0 12px 12px; min-height: 0; }
+        .nb-card {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .nb-card-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; word-break: break-all; }
+        .nb-card-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+        .nb-review-card {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .nb-review-card.overdue { border: 1.5px solid #ef4444; }
+        .nb-review-card.invalid { opacity: 0.65; border: 1.5px dashed var(--text-muted); }
+        .nb-review-card.done { opacity: 0.75; }
+        .nb-review-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+        .nb-review-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .nb-review-badge { display: inline-block; padding: 1px 8px; border-radius: 8px; font-size: 11px; font-weight: 600; background: var(--bg-secondary); color: var(--text-secondary); }
+        .nb-review-badge.red { background: #fee2e2; color: #dc2626; }
+        .nb-review-badge.green { background: #dcfce7; color: #16a34a; }
+        .nb-review-badge.blue { background: #dbeafe; color: #2563eb; }
+        .nb-ctx-menu {
+            position: fixed;
+            z-index: 4200;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            padding: 6px;
+            min-width: 130px;
+            display: none;
+        }
+        .nb-ctx-menu button {
+            display: block; width: 100%; border: none; background: none; text-align: left;
+            padding: 10px 14px; font-size: 14px; color: var(--text-primary); border-radius: 8px; cursor: pointer;
+        }
+        .nb-ctx-menu button:active { background: var(--bg-secondary); }
+        .nb-ctx-menu button.danger { color: #ef4444; }
+
+        /* ---------- 编辑器整体 ---------- */
+        .nb-editor {
+            position: fixed; inset: 0; z-index: 3000;
+            background: var(--bg-secondary);
+            display: none;
+            flex-direction: column;
+        }
+        .nb-editor.show { display: flex; }
+        .nb-topbar {
+            height: 52px; flex-shrink: 0;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.08));
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 10px; gap: 8px; z-index: 3010;
+        }
+        .nb-topbar-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+        .nb-topbar-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+        .nb-title { font-size: 15px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
+        .nb-tb-btn {
+            width: 38px; height: 38px; border: none; background: none; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            color: var(--text-secondary); flex-shrink: 0; position: relative;
+        }
+        .nb-tb-btn svg { width: 21px; height: 21px; }
+        .nb-tb-btn.active { background: var(--accent); color: #fff; }
+        .nb-tb-btn:disabled { opacity: 0.35; cursor: default; }
+        .nb-tb-sep { width: 1px; height: 24px; background: var(--border-color, rgba(0,0,0,0.12)); margin: 0 4px; flex-shrink: 0; }
+        .nb-brush-btn {
+            width: 38px; height: 38px; border: none; background: none; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+            position: relative;
+        }
+        .nb-brush-btn .nb-brush-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--bg-primary); box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+        .nb-brush-btn.hl .nb-brush-dot { border-radius: 5px; }
+        .nb-brush-btn.active { background: var(--bg-secondary); box-shadow: inset 0 0 0 2px var(--accent); }
+        .nb-pageno {
+            border: none; background: var(--bg-secondary); border-radius: 10px; cursor: pointer;
+            padding: 8px 10px; font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap;
+        }
+
+        /* ---------- 左栏 ---------- */
+        .nb-leftbar {
+            position: absolute; left: 0; top: 52px; bottom: 0; width: 56px;
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-color, rgba(0,0,0,0.08));
+            display: flex; flex-direction: column; align-items: center;
+            padding: 10px 0; z-index: 3005; overflow-y: auto;
+        }
+        .nb-lb-group { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
+        .nb-lb-spacer { flex: 1; min-height: 10px; }
+        .nb-lb-btn {
+            width: 46px; min-height: 46px; border: none; background: none; border-radius: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+            cursor: pointer; color: var(--text-secondary); padding: 4px 0;
+        }
+        .nb-lb-btn svg { width: 20px; height: 20px; }
+        .nb-lb-btn span { font-size: 10px; line-height: 1.1; }
+        .nb-lb-btn.active { background: var(--accent); color: #fff; }
+        .nb-lb-btn.review-done { color: #16a34a; }
+
+        /* ---------- 画布区 ---------- */
+        .nb-canvas-wrap {
+            position: absolute; left: 56px; right: 0; top: 52px; bottom: 0;
+            overflow: auto;
+            display: block;
+            text-align: center;
+            background: var(--bg-secondary);
+        }
+        .nb-page-box {
+            position: relative;
+            display: inline-block;
+            margin: 16px;
+            background: #ffffff;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+        }
+        .nb-page-box canvas { position: absolute; left: 0; top: 0; }
+        #nbBgCanvas { z-index: 1; }
+        #nbCanvas { z-index: 2; touch-action: none; }
+        #nbOverlayCanvas { z-index: 3; pointer-events: none; }
+        #nbTextLayer { position: absolute; left: 0; top: 0; z-index: 4; pointer-events: none; transform-origin: 0 0; }
+        #nbTextLayer > * { pointer-events: auto; }
+        body.nb-text-mode #nbTextLayer { cursor: text; }
+
+        .nb-textbox {
+            position: absolute;
+            min-width: 40px; min-height: 24px; max-width: 600px;
+            border: 1.5px dashed transparent;
+            border-radius: 4px;
+            padding: 6px;
+            box-sizing: border-box;
+        }
+        .nb-textbox.selected { border-color: var(--accent); }
+        .nb-textbox .nb-textbox-inner { outline: none; min-width: 30px; min-height: 16px; white-space: pre-wrap; word-break: break-word; }
+        .nb-textbox.vertical .nb-textbox-inner { writing-mode: vertical-rl; }
+        .nb-media-img { position: absolute; border: 1.5px dashed transparent; border-radius: 4px; box-sizing: border-box; }
+        .nb-media-img.selected { border-color: var(--accent); }
+        .nb-media-img img { width: 100%; height: 100%; display: block; pointer-events: none; }
+        .nb-media-audio {
+            position: absolute; display: flex; align-items: center; gap: 6px;
+            background: var(--bg-secondary); border-radius: 20px; padding: 6px 12px;
+            font-size: 12px; color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            border: 1.5px dashed transparent;
+        }
+        .nb-media-audio.selected { border-color: var(--accent); }
+        .nb-media-del {
+            position: absolute; top: -10px; right: -10px; width: 22px; height: 22px;
+            border-radius: 50%; border: none; background: #ef4444; color: #fff; font-size: 13px;
+            cursor: pointer; display: none; align-items: center; justify-content: center; line-height: 1; z-index: 5;
+        }
+        .nb-textbox.selected .nb-media-del, .nb-media-img.selected .nb-media-del, .nb-media-audio.selected .nb-media-del { display: flex; }
+
+        /* ---------- 通用面板（左栏弹出） ---------- */
+        .nb-panel {
+            position: absolute; z-index: 3050;
+            background: var(--bg-primary);
+            border-radius: 14px;
+            box-shadow: 0 6px 28px rgba(0,0,0,0.2);
+            padding: 12px;
+            display: none;
+            max-width: min(360px, calc(100vw - 80px));
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+        .nb-panel.show { display: block; }
+        .nb-panel h4 { margin: 0 0 10px; font-size: 14px; color: var(--text-primary); }
+        .nb-panel-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .nb-panel-btn {
+            border: none; background: var(--bg-secondary); color: var(--text-primary);
+            border-radius: 10px; padding: 9px 14px; font-size: 13px; cursor: pointer;
+        }
+        .nb-panel-btn.primary { background: var(--accent); color: #fff; font-weight: 600; }
+        .nb-panel-btn.danger { color: #ef4444; }
+        .nb-panel-btn.active { box-shadow: inset 0 0 0 2px var(--accent); }
+        .nb-panel input[type="text"], .nb-panel input[type="number"], .nb-panel select {
+            border: 1px solid var(--border-color, rgba(0,0,0,0.15)); border-radius: 10px;
+            padding: 8px 10px; font-size: 13px; background: var(--bg-primary); color: var(--text-primary);
+            box-sizing: border-box;
+        }
+        .nb-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); }
+        .nb-swatch.active { border-color: var(--accent); }
+        .nb-width-chip { border: 1px solid var(--border-color, rgba(0,0,0,0.15)); background: var(--bg-primary); color: var(--text-primary); border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+        .nb-width-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        /* ---------- 页面大纲抽屉 ---------- */
+        .nb-outline {
+            position: absolute; right: 0; top: 52px; bottom: 0; width: 240px;
+            background: var(--bg-primary);
+            box-shadow: -4px 0 16px rgba(0,0,0,0.12);
+            z-index: 3040; display: none; flex-direction: column; padding: 12px;
+        }
+        .nb-outline.show { display: flex; }
+        .nb-outline-list { flex: 1; overflow-y: auto; margin-top: 8px; }
+        .nb-outline-item {
+            padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 13px;
+            color: var(--text-primary); display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+        }
+        .nb-outline-item.current { background: var(--bg-secondary); font-weight: 700; }
+        .nb-outline-item .snippet { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: right; }
+
+        /* ---------- 套索选择工具条 / 文本样式工具条 ---------- */
+        .nb-float-toolbar {
+            position: absolute; z-index: 3060;
+            background: var(--bg-primary); border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.22);
+            padding: 6px; display: none; gap: 2px; align-items: center; flex-wrap: wrap;
+            max-width: calc(100vw - 90px);
+        }
+        .nb-float-toolbar.show { display: flex; }
+        .nb-float-toolbar button {
+            border: none; background: none; border-radius: 8px; padding: 7px 9px;
+            font-size: 12px; color: var(--text-primary); cursor: pointer; white-space: nowrap;
+        }
+        .nb-float-toolbar button:active { background: var(--bg-secondary); }
+        .nb-float-toolbar button.on { background: var(--accent); color: #fff; }
+        .nb-float-toolbar .sep { width: 1px; height: 18px; background: rgba(0,0,0,0.12); margin: 0 2px; }
+
+        /* ---------- Quiz 弹窗 ---------- */
+        .nb-quiz-overlay {
+            position: fixed; inset: 0; z-index: 4300; background: rgba(0,0,0,0.45);
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .nb-quiz-overlay.show { display: flex; }
+        .nb-quiz-box {
+            background: var(--bg-primary); border-radius: 16px; width: min(680px, 100%);
+            max-height: 86vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .nb-quiz-head { padding: 14px 18px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-shrink: 0; }
+        .nb-quiz-head .t { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+        .nb-quiz-body { padding: 4px 18px 12px; overflow-y: auto; font-size: 14px; line-height: 1.7; color: var(--text-primary); }
+        .nb-quiz-body h1, .nb-quiz-body h2, .nb-quiz-body h3 { margin: 12px 0 6px; }
+        .nb-quiz-body .katex-display { overflow-x: auto; }
+        .nb-quiz-foot { padding: 10px 18px 14px; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; border-top: 1px solid var(--border-color, rgba(0,0,0,0.08)); }
+
+        /* 墨水屏友好：编辑器内减少动画 */
+        .nb-editor * { transition: none !important; }
+
     </style>
 </head>
 <body>
@@ -5040,6 +5309,30 @@
     </div>
 
     <!-- ==================== Page 4: Settings ==================== -->
+    <!-- ==================== Page 7: 笔记（笔记本 + 复习列表） ==================== -->
+    <div class="page" id="page7">
+        <div class="nbhome-grid" id="nbHomeGrid">
+            <div class="nbhome-column" onclick="onNotebookColumnClick(event)">
+                <div class="nbhome-column-header">
+                    <span class="nbhome-column-title">笔记本</span>
+                    <span class="column-count" id="nbCount">0</span>
+                </div>
+                <div class="nbhome-list" id="notebookList">
+                    <div class="empty-state"><p>点击空白处新建笔记本</p></div>
+                </div>
+            </div>
+            <div class="nbhome-column">
+                <div class="nbhome-column-header">
+                    <span class="nbhome-column-title">复习列表</span>
+                    <span class="column-count" id="nbReviewCount">0</span>
+                </div>
+                <div class="nbhome-list" id="nbReviewList">
+                    <div class="empty-state"><p>在笔记本内点击「加入复习」<br>AI 将生成间隔复习 Quiz</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="page" id="page4">
         <div style="margin-bottom:16px;">
             <span style="font-size:20px;font-weight:700;" data-i18n="settings_title">设置</span>
@@ -5867,6 +6160,146 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
 
+    <!-- ==================== 笔记本编辑器 ==================== -->
+    <div class="nb-editor" id="nbEditor">
+        <div class="nb-topbar">
+            <div class="nb-topbar-left">
+                <button class="nb-tb-btn" onclick="nbCloseEditor()" title="退出">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <span class="nb-title" id="nbTitle">笔记本</span>
+            </div>
+            <div class="nb-topbar-right">
+                <button class="nb-brush-btn" id="nbBrush0" onclick="nbBrushClick(0)" title="笔刷1"><div class="nb-brush-dot"></div></button>
+                <button class="nb-brush-btn" id="nbBrush1" onclick="nbBrushClick(1)" title="笔刷2"><div class="nb-brush-dot"></div></button>
+                <button class="nb-brush-btn" id="nbBrush2" onclick="nbBrushClick(2)" title="笔刷3"><div class="nb-brush-dot"></div></button>
+                <div class="nb-tb-sep"></div>
+                <button class="nb-tb-btn" id="nbEraserBtn" onclick="toggleNbEraser()" title="笔画橡皮擦">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16a1.5 1.5 0 010-2L13 4a1.5 1.5 0 012 0l6 6a1.5 1.5 0 010 2l-8 8"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                </button>
+                <button class="nb-tb-btn" id="nbUndoBtn" onclick="nbUndo()" title="撤销">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg>
+                </button>
+                <button class="nb-tb-btn" id="nbRedoBtn" onclick="nbRedo()" title="重做">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 014-4h12"/></svg>
+                </button>
+                <div class="nb-tb-sep"></div>
+                <button class="nb-tb-btn" onclick="nbPrevPage()" title="上一页">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button class="nb-pageno" id="nbPageNo" onclick="nbToggleOutline()">1 / 1</button>
+                <button class="nb-tb-btn" onclick="nbNextPage()" title="下一页">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="nb-leftbar" id="nbLeftbar">
+            <div class="nb-lb-group">
+                <button class="nb-lb-btn" id="nbTplBtn" onclick="nbShowPanel('template', this)" title="模板">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                    <span>模板</span>
+                </button>
+                <button class="nb-lb-btn" id="nbLassoBtn" onclick="nbSetTool('lasso')" title="套索">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><ellipse cx="12" cy="10" rx="8" ry="6"/><path d="M7 15.5c-1 1.5-1 3 .5 4.5" stroke-dasharray="none"/></svg>
+                    <span>套索</span>
+                </button>
+                <button class="nb-lb-btn" id="nbTextBtn" onclick="nbSetTool('text')" title="文本">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                    <span>文本</span>
+                </button>
+                <button class="nb-lb-btn" id="nbShapeBtn" onclick="nbShowPanel('shape', this)" title="图形">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="4.5"/><rect x="12" y="12" width="9" height="9" rx="1"/></svg>
+                    <span>图形</span>
+                </button>
+            </div>
+            <div class="nb-lb-spacer"></div>
+            <div class="nb-lb-group">
+                <button class="nb-lb-btn" onclick="nbShowPanel('page', this)" title="页面+">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    <span>页面+</span>
+                </button>
+                <button class="nb-lb-btn" onclick="nbShowPanel('zoom', this)" title="缩放">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>
+                    <span>缩放</span>
+                </button>
+                <button class="nb-lb-btn" onclick="nbShowPanel('export', this)" title="导出">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>导出</span>
+                </button>
+                <button class="nb-lb-btn" onclick="nbShowPanel('insert', this)" title="插入">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span>插入</span>
+                </button>
+            </div>
+            <div class="nb-lb-spacer"></div>
+            <div class="nb-lb-group">
+                <button class="nb-lb-btn" onclick="nbShowPanel('search', this)" title="搜索">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <span>搜索</span>
+                </button>
+                <button class="nb-lb-btn" id="nbReviewBtn" onclick="nbReviewBtnClick()" title="加入复习">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+                    <span id="nbReviewBtnLabel">加入复习</span>
+                </button>
+                <button class="nb-lb-btn" onclick="nbShowPanel('more', this)" title="更多">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                    <span>更多</span>
+                </button>
+            </div>
+        </div>
+        <div class="nb-canvas-wrap" id="nbCanvasWrap">
+            <div class="nb-page-box" id="nbPageBox">
+                <canvas id="nbBgCanvas"></canvas>
+                <canvas id="nbCanvas"></canvas>
+                <canvas id="nbOverlayCanvas"></canvas>
+                <div id="nbTextLayer"></div>
+            </div>
+        </div>
+        <div class="nb-panel" id="nbPanel"></div>
+        <div class="nb-outline" id="nbOutline"></div>
+        <div class="nb-float-toolbar" id="nbSelToolbar"></div>
+        <div class="nb-float-toolbar" id="nbTextToolbar"></div>
+    </div>
+
+    <!-- 笔记本编辑器隐藏文件输入 -->
+    <input type="file" id="nbPdfInput" accept=".pdf,application/pdf" style="display:none;">
+    <input type="file" id="nbImageInput" accept="image/*" style="display:none;">
+    <input type="file" id="nbAudioInput" accept="audio/*,video/*" style="display:none;">
+
+    <!-- 笔记本列表长按/右键菜单 -->
+    <div class="nb-ctx-menu" id="nbCtxMenu"></div>
+
+    <!-- 新建笔记本弹窗 -->
+    <div class="modal-overlay" id="nbCreateModal" onclick="hideModal('nbCreateModal')">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title">新建笔记本</span>
+                <button class="modal-close" onclick="hideModal('nbCreateModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">名称</label>
+                <input type="text" class="form-input" id="nbCreateName" placeholder="笔记本名称">
+            </div>
+            <div class="form-group">
+                <label class="form-label">模板</label>
+                <div class="nb-panel-row" id="nbCreateTplRow"></div>
+            </div>
+            <button class="btn-primary" onclick="nbConfirmCreate()">创建</button>
+        </div>
+    </div>
+
+    <!-- 复习 Quiz 弹窗 -->
+    <div class="nb-quiz-overlay" id="nbQuizModal" onclick="nbHideQuiz()">
+        <div class="nb-quiz-box" onclick="event.stopPropagation()">
+            <div class="nb-quiz-head">
+                <span class="t" id="nbQuizTitle">复习 Quiz</span>
+                <button class="modal-close" onclick="nbHideQuiz()">&times;</button>
+            </div>
+            <div class="nb-quiz-body" id="nbQuizBody"></div>
+            <div class="nb-quiz-foot" id="nbQuizFoot"></div>
+        </div>
+    </div>
+
     <!-- ==================== Bottom Nav ==================== -->
     <div class="bottom-nav">
         <div class="nav-item" onclick="switchPage(5)">
@@ -5883,6 +6316,10 @@
         </div>
         <div class="nav-item" id="navNotes" onclick="switchPage(3)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span data-i18n="nav_lectures">讲义</span>
+        </div>
+        <div class="nav-item" id="navNotebooks" onclick="switchPage(7)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h20v18H2z" opacity="0"/><path d="M4 19.5A2.5 2.5 0 016.5 22H20V2H6.5A2.5 2.5 0 004 4.5z" opacity="0"/><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             <span data-i18n="nav_notes">笔记</span>
         </div>
         <div class="nav-item" id="navExercises" onclick="switchPage(6)">
@@ -5911,6 +6348,10 @@
                 wrongByFolder: {},  // { folderId: [{ taskId, taskName, questions: [{questionIndex, latex, score, userDrawing, aiComment, redoDrawings:[]}] }] }
                 archivedWrong: {}  // { folderId: [{ taskId, taskName, questionIndex, latex, score, userDrawing, aiComment, redoDrawings:[], archivedAt }] }
             },
+            notebooks: {
+                items: [],     // [{ id, name, template, createdAt, updatedAt, pages: [{ id, template, bgImage?, createdAt }] }] 页面内容存 IndexedDB: nbpage_{pageId}
+                reviews: []    // [{ id, notebookId, pageId, createdAt, updatedAt, stage, dueAt, status, extra, extraFlags, quizzes: [{stage, content, generatedAt, dueAt, completedAt, extra}] }]
+            },
             settings: {
                 supabaseUrl: '',
                 supabaseKey: '',
@@ -5932,7 +6373,7 @@
         // ==================== i18n 国际化 ====================
         const I18N = {
             zh: {
-                nav_classroom:'课堂',nav_bookshelf:'书架',nav_reader:'阅读',nav_notes:'笔记',nav_exercises:'习题',nav_settings:'设置',
+                nav_classroom:'课堂',nav_bookshelf:'书架',nav_reader:'阅读',nav_lectures:'讲义',nav_notes:'笔记',nav_exercises:'习题',nav_settings:'设置',
                 settings_title:'设置',user_settings:'用户设置',api_setting:'API Setting',api_setting_desc:'配置 AI 和同步服务',
                 notification:'通知推送',notification_desc:'Web Push Notification',photo_retention:'照片储存天数',photo_retention_desc:'0 = 永不删除',exercise_time:'习题时间',exercise_time_desc:'每题作答时间（1-120分钟）',exercise_time_unit:'分钟',
                 apple_pencil:'Apple Pencil 模式',apple_pencil_desc:'仅 Pencil 书写，手指仅翻页缩放',
@@ -6112,7 +6553,7 @@
                 restored_parts:'已从云端恢复 ',
             },
             en: {
-                nav_classroom:'Class',nav_bookshelf:'Library',nav_reader:'Reader',nav_notes:'Notes',nav_exercises:'Exercise',nav_settings:'Settings',
+                nav_classroom:'Class',nav_bookshelf:'Library',nav_reader:'Reader',nav_lectures:'Lectures',nav_notes:'Notes',nav_exercises:'Exercise',nav_settings:'Settings',
                 settings_title:'Settings',user_settings:'User Settings',api_setting:'API Setting',api_setting_desc:'Configure AI & sync services',
                 notification:'Push Notifications',notification_desc:'Web Push Notification',photo_retention:'Photo Retention Days',photo_retention_desc:'0 = Never delete',exercise_time:'Exercise Time',exercise_time_desc:'Time per question (1-120 min)',exercise_time_unit:'min',
                 apple_pencil:'Apple Pencil Mode',apple_pencil_desc:'Only Pencil writes; finger scrolls/zooms',
@@ -6292,7 +6733,7 @@
                 restored_parts:'Restored from cloud: ',
             },
             fr: {
-                nav_classroom:'Cours',nav_bookshelf:'Biblio',nav_reader:'Lecture',nav_notes:'Notes',nav_exercises:'Exercices',nav_settings:'Réglages',
+                nav_classroom:'Cours',nav_bookshelf:'Biblio',nav_reader:'Lecture',nav_lectures:'Polycopiés',nav_notes:'Notes',nav_exercises:'Exercices',nav_settings:'Réglages',
                 settings_title:'Réglages',user_settings:'Paramètres utilisateur',api_setting:'Paramètres API',api_setting_desc:'Configurer l\'IA et la synchronisation',
                 notification:'Notifications push',notification_desc:'Web Push Notification',photo_retention:'Rétention photos (jours)',photo_retention_desc:'0 = Ne jamais supprimer',exercise_time:'Temps d\'exercice',exercise_time_desc:'Temps par question (1-120 min)',exercise_time_unit:'min',
                 apple_pencil:'Mode Apple Pencil',apple_pencil_desc:'Seul le Pencil écrit ; le doigt fait défiler/zoom',
@@ -7116,6 +7557,9 @@
                     if (!appData.archived) appData.archived = [];
                     if (!appData.classroom) appData.classroom = { courses: [], seminars: [] };
                     if (!appData.exercises) appData.exercises = { folders: [], wrongByFolder: {}, archivedWrong: {} };
+                    if (!appData.notebooks) appData.notebooks = { items: [], reviews: [] };
+                    if (!appData.notebooks.items) appData.notebooks.items = [];
+                    if (!appData.notebooks.reviews) appData.notebooks.reviews = [];
                     if (!appData.settings) appData.settings = {};
                     if (appData.settings.photoRetentionDays === undefined) appData.settings.photoRetentionDays = 0;
                 } catch(e) {
@@ -7306,8 +7750,8 @@
         }
 
         // ==================== Navigation ====================
-        // Nav item order: [0]=classroom(page5), [1]=bookshelf(page1), [2]=reader(page2), [3]=notes(page3), [4]=exercises(page6), [5]=settings(page4)
-        const pageToNavIndex = { 5: 0, 1: 1, 2: 2, 3: 3, 6: 4, 4: 5 };
+        // Nav item order: [0]=classroom(page5), [1]=bookshelf(page1), [2]=reader(page2), [3]=lectures(page3), [4]=notebooks(page7), [5]=exercises(page6), [6]=settings(page4)
+        const pageToNavIndex = { 5: 0, 1: 1, 2: 2, 3: 3, 7: 4, 6: 5, 4: 6 };
 
         function switchPage(num) {
             // 分屏切换触发后 600ms 内忽略随之而来的 click，防止两指压下/抬起时触发误点
@@ -7359,6 +7803,10 @@
 
             if (num === 6) {
                 renderExercisesPage();
+            }
+
+            if (num === 7) {
+                renderNotebooksPage();
             }
 
             if (num === 4) {
@@ -12078,6 +12526,13 @@
                             cloudSyncedAtMs
                         );
 
+                        // 合并笔记本数据（元数据；页面内容按需拉取）
+                        appData.notebooks = mergeNotebooksData(
+                            metadata.notebooks,
+                            appData.notebooks,
+                            cloudSyncedAtMs
+                        );
+
                         // 收集本地新加但云端还没有的课堂素材 id
                         const cloudMatIds = new Set();
                         ['courses', 'seminars'].forEach(lk => {
@@ -12320,9 +12775,10 @@
                 drafts: appData.drafts,
                 classroom: stripClassroomData(appData.classroom),
                 exercises: stripExercisesData(appData.exercises),
+                notebooks: appData.notebooks || { items: [], reviews: [] },
                 syncedAt: new Date().toISOString()
             };
-            
+
             await r2PutObject('metadata.json', JSON.stringify(metadata), 'application/json');
         }
 
@@ -12432,6 +12888,37 @@
                     } catch (e) {
                         // 忽略删除错误
                     }
+                }
+
+                // 笔记本页面内容变更：上传页面 JSON（含其引用的媒体）
+                if (action === 'notebook_page' && fileId) {
+                    const pgData = await getFileData('nbpage_' + fileId).catch(() => null);
+                    if (pgData) {
+                        await r2PutObject('notebooks/pages/nbpage_' + fileId, pgData, 'application/json');
+                        try {
+                            const pc = JSON.parse(pgData);
+                            for (const m of (pc.media || [])) {
+                                if (!m.mediaId) continue;
+                                const mData = await getFileData('nbmedia_' + m.mediaId).catch(() => null);
+                                if (mData) {
+                                    await r2PutObject('notebooks/media/nbmedia_' + m.mediaId, mData, 'application/octet-stream');
+                                }
+                            }
+                        } catch (e) { /* JSON 损坏则只同步页面 */ }
+                    }
+                }
+
+                // 笔记本媒体资源上传（插入图片/音频/PDF背景时）
+                if (action === 'notebook_media' && fileId) {
+                    const mData = await getFileData('nbmedia_' + fileId).catch(() => null);
+                    if (mData) {
+                        await r2PutObject('notebooks/media/nbmedia_' + fileId, mData, 'application/octet-stream');
+                    }
+                }
+
+                // 删除笔记本页面：删除云端页面对象
+                if (action === 'notebook_page_delete' && fileId) {
+                    try { await r2DeleteObject('notebooks/pages/nbpage_' + fileId); } catch (e) { /* 忽略 */ }
                 }
 
                 // 如果是删除课堂素材，删除云端素材
@@ -12979,9 +13466,10 @@
                     drafts: appData.drafts || {},
                     classroom: stripClassroomData(appData.classroom),
                     exercises: stripExercisesData(appData.exercises),
+                    notebooks: appData.notebooks || { items: [], reviews: [] },
                     syncedAt: new Date().toISOString()
                 };
-                
+
                 await r2PutObject('metadata.json', JSON.stringify(metadata), 'application/json');
                 
                 // 2. 上传PDF文件 (从IndexedDB获取)
@@ -13112,6 +13600,29 @@
                     }
                 }
 
+                // 8. 上传笔记本页面内容与媒体 (从IndexedDB获取)
+                for (const nb of (appData.notebooks?.items || [])) {
+                    for (const pg of (nb.pages || [])) {
+                        const pgData = await getFileData('nbpage_' + pg.id).catch(() => null);
+                        if (pgData) {
+                            await r2PutObject('notebooks/pages/nbpage_' + pg.id, pgData, 'application/json');
+                            // 上传该页引用的媒体资源
+                            try {
+                                const pc = JSON.parse(pgData);
+                                const mediaIds = [];
+                                (pc.media || []).forEach(m => { if (m.mediaId) mediaIds.push(m.mediaId); });
+                                if (pg.bgImage) mediaIds.push(pg.bgImage);
+                                for (const mid of mediaIds) {
+                                    const mData = await getFileData('nbmedia_' + mid).catch(() => null);
+                                    if (mData) {
+                                        await r2PutObject('notebooks/media/nbmedia_' + mid, mData, 'application/octet-stream');
+                                    }
+                                }
+                            } catch (e) { /* 页面 JSON 损坏时跳过媒体 */ }
+                        }
+                    }
+                }
+
                 showToast(i18n('sync_done_detail', uploadedFiles, uploadedLectures, uploadedAbstracts));
             } catch (err) {
                 console.error('Sync to R2 failed:', err);
@@ -13128,6 +13639,7 @@
             try { renderNotesPage(); } catch (e) { console.warn('renderNotesPage failed', e); }
             try { renderClassroomPage(); } catch (e) { console.warn('renderClassroomPage failed', e); }
             try { renderExercisesPage(); } catch (e) { console.warn('renderExercisesPage failed', e); }
+            try { renderNotebooksPage(); } catch (e) { console.warn('renderNotebooksPage failed', e); }
             // Keep the R2 auto-sync timer consistent with the (possibly new) config
             try { initR2AutoSync(); } catch (e) { console.warn('initR2AutoSync failed', e); }
         }
@@ -13185,6 +13697,41 @@
                 }
             });
             return merged;
+        }
+
+        // ==================== Notebooks 数据合并 ====================
+        // 合并笔记本数据（notebooks.items / notebooks.reviews）：
+        //   - 按 id 合并；两边都有 → 取 updatedAt 较新的整个对象
+        //   - 本地有云端没有 → createdAt/updatedAt > cloudSyncedAtMs 视为本地新建保留，否则视为云端已删除丢弃
+        //   - 云端有本地没有 → 直接采用云端（另一设备新建）
+        function mergeNotebooksData(cloudNb, localNb, cloudSyncedAtMs) {
+            const cloud = cloudNb || { items: [], reviews: [] };
+            const local = localNb || { items: [], reviews: [] };
+            const baseline = Number(cloudSyncedAtMs) || 0;
+            const ts = (obj) => {
+                const t = Date.parse(obj && (obj.updatedAt || obj.createdAt) || '');
+                return isNaN(t) ? 0 : t;
+            };
+            const mergeList = (cloudList, localList) => {
+                const localMap = {};
+                (localList || []).forEach(it => { if (it && it.id) localMap[it.id] = it; });
+                const cloudIds = new Set((cloudList || []).map(it => it && it.id).filter(Boolean));
+                const merged = (cloudList || []).map(ci => {
+                    if (!ci || !ci.id) return ci;
+                    const li = localMap[ci.id];
+                    if (!li) return ci;
+                    return ts(li) > ts(ci) ? li : ci;
+                }).filter(Boolean);
+                (localList || []).forEach(li => {
+                    if (!li || !li.id || cloudIds.has(li.id)) return;
+                    if (ts(li) > baseline) merged.push(li); // 本地新建还未上传
+                });
+                return merged;
+            };
+            return {
+                items: mergeList(cloud.items, local.items),
+                reviews: mergeList(cloud.reviews, local.reviews)
+            };
         }
 
         // ==================== Classroom 数据合并 ====================
@@ -22525,6 +23072,2292 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
         // Init
         init();
         applyI18n();
+
+        // ==================== 笔记模块（笔记本 + 间隔复习） ====================
+        // 数据结构：
+        //   appData.notebooks.items   笔记本元数据（localStorage，小）
+        //   appData.notebooks.reviews 复习计划（localStorage，小）
+        //   IndexedDB nbpage_{pageId} 每页内容 JSON: { strokes, texts, media, recognized }
+        //   IndexedDB nbmedia_{id}    图片/音频/PDF页背景 dataURL
+        // 书写数据全部走 IndexedDB，localStorage 只存元数据，避免爆缓存。
+
+        const NB_PAGE_W = 1000;              // 页面逻辑宽度（对应 A4 210mm）
+        const NB_PAGE_H = 1414;              // 页面逻辑高度
+        const NB_MM = NB_PAGE_W / 210;       // 每毫米逻辑单位
+        const NB_COLORS = ['#111111', '#555555', '#a3a3a3'];   // 黑 / 深灰 / 浅灰
+        const NB_PEN_MMS = [0.3, 0.5, 0.8, 1.2, 2.0];
+        const NB_HL_MMS = [2, 4, 6];
+        const NB_TEMPLATES = {
+            blank:   '空白',
+            wide:    '宽横线',
+            narrow:  '窄横线',
+            cornell: '康奈尔',
+            meeting: '会议记录'
+        };
+        const NB_UNDO_MAX = 60;              // 撤销栈上限（防内存膨胀）
+
+        function nbUid(prefix) {
+            return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+        }
+        function nbData() {
+            if (!appData.notebooks) appData.notebooks = { items: [], reviews: [] };
+            if (!appData.notebooks.items) appData.notebooks.items = [];
+            if (!appData.notebooks.reviews) appData.notebooks.reviews = [];
+            return appData.notebooks;
+        }
+        function nbGetNotebook(id) { return nbData().items.find(n => n.id === id); }
+        function nbTouch(nb) { nb.updatedAt = new Date().toISOString(); }
+        // 元数据变更（新建/删除/重命名笔记本、加/删页、复习变更）→ 触发云同步
+        function nbSyncMeta() {
+            try { triggerSyncOnFileChange(null, 'notebook_meta'); } catch (e) { /* 未配置云同步 */ }
+        }
+
+        // ---------- 页面内容存取（IndexedDB + 云端回退） ----------
+        function nbEmptyContent() { return { strokes: [], texts: [], media: [], recognized: null }; }
+
+        async function nbLoadPageContent(pageId) {
+            let raw = null;
+            try { raw = await getFileData('nbpage_' + pageId); } catch (e) { /* IDB 异常 */ }
+            if (!raw) {
+                // 本地没有 → 尝试云端拉取（另一设备写的内容）
+                const cfg = appData.settings && appData.settings.r2Config;
+                if (cfg && cfg.accessKeyId) {
+                    try {
+                        const cloud = await r2GetObject('notebooks/pages/nbpage_' + pageId);
+                        if (cloud) {
+                            raw = cloud;
+                            await saveFileData('nbpage_' + pageId, cloud).catch(() => {});
+                        }
+                    } catch (e) { /* 云端也没有 */ }
+                }
+            }
+            if (!raw) return nbEmptyContent();
+            try {
+                const c = JSON.parse(raw);
+                if (!Array.isArray(c.strokes)) c.strokes = [];
+                if (!Array.isArray(c.texts)) c.texts = [];
+                if (!Array.isArray(c.media)) c.media = [];
+                return c;
+            } catch (e) {
+                console.error('[nb] 页面内容损坏:', pageId, e);
+                return nbEmptyContent();
+            }
+        }
+
+        async function nbGetMediaData(mediaId) {
+            if (!mediaId) return null;
+            let data = null;
+            try { data = await getFileData('nbmedia_' + mediaId); } catch (e) {}
+            if (!data) {
+                const cfg = appData.settings && appData.settings.r2Config;
+                if (cfg && cfg.accessKeyId) {
+                    try {
+                        data = await r2GetObject('notebooks/media/nbmedia_' + mediaId);
+                        if (data) await saveFileData('nbmedia_' + mediaId, data).catch(() => {});
+                    } catch (e) {}
+                }
+            }
+            return data;
+        }
+
+        // ==================== Page 7 渲染 ====================
+        function renderNotebooksPage() {
+            const listEl = document.getElementById('notebookList');
+            if (!listEl) return;
+            nbRefreshReviewStates();
+            const items = nbData().items;
+            document.getElementById('nbCount').textContent = items.length;
+            if (!items.length) {
+                listEl.innerHTML = '<div class="empty-state"><p>点击空白处新建笔记本</p></div>';
+            } else {
+                listEl.innerHTML = items.map(nb => {
+                    const pages = (nb.pages || []).length;
+                    const tpl = NB_TEMPLATES[nb.template] || '空白';
+                    const date = nb.updatedAt ? new Date(nb.updatedAt).toLocaleDateString() : '';
+                    return `<div class="nb-card" data-nbid="${nb.id}"
+                        onclick="nbOpenNotebook('${nb.id}')"
+                        oncontextmenu="event.preventDefault();if(!('ontouchstart' in window))nbShowCtxMenu(event.clientX,event.clientY,'${nb.id}')"
+                        ontouchstart="nbStartLongPress(event,'${nb.id}')" ontouchend="nbCancelLongPress()" ontouchmove="nbCancelLongPress()">
+                        <div class="nb-card-title">${escapeHtml(nb.name)}</div>
+                        <div class="nb-card-meta"><span>${pages} 页</span><span>${tpl}</span><span>${date}</span></div>
+                    </div>`;
+                }).join('') + '<div style="min-height:120px;"></div>';
+            }
+            renderNbReviewList();
+        }
+
+        function onNotebookColumnClick(e) {
+            if (e.target.closest('.nb-card')) return;
+            nbShowCreateModal();
+        }
+
+        function nbShowCreateModal() {
+            const row = document.getElementById('nbCreateTplRow');
+            row.innerHTML = Object.keys(NB_TEMPLATES).map((k, i) =>
+                `<button class="nb-panel-btn${i === 0 ? ' active' : ''}" data-tpl="${k}" onclick="nbPickCreateTpl(this)">${NB_TEMPLATES[k]}</button>`
+            ).join('');
+            document.getElementById('nbCreateName').value = '';
+            showModal('nbCreateModal');
+            setTimeout(() => document.getElementById('nbCreateName').focus(), 100);
+        }
+        function nbPickCreateTpl(btn) {
+            document.querySelectorAll('#nbCreateTplRow .nb-panel-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+        function nbConfirmCreate() {
+            const name = document.getElementById('nbCreateName').value.trim() || '未命名笔记本';
+            const tplBtn = document.querySelector('#nbCreateTplRow .nb-panel-btn.active');
+            const template = tplBtn ? tplBtn.dataset.tpl : 'blank';
+            const now = new Date().toISOString();
+            const nb = {
+                id: nbUid('nb'), name, template,
+                createdAt: now, updatedAt: now,
+                pages: [{ id: nbUid('nbp'), template, createdAt: now }]
+            };
+            nbData().items.unshift(nb);
+            saveData();
+            hideModal('nbCreateModal');
+            renderNotebooksPage();
+            nbSyncMeta();
+            showToast('笔记本已创建');
+        }
+
+        // ---------- 笔记本长按 / 右键菜单 ----------
+        let _nbLongPressTimer = null;
+        function nbStartLongPress(e, nbId) {
+            nbCancelLongPress();
+            const t = e.touches && e.touches[0];
+            const x = t ? t.clientX : e.clientX, y = t ? t.clientY : e.clientY;
+            _nbLongPressTimer = setTimeout(() => { nbShowCtxMenu(x, y, nbId); }, 550);
+        }
+        function nbCancelLongPress() {
+            if (_nbLongPressTimer) { clearTimeout(_nbLongPressTimer); _nbLongPressTimer = null; }
+        }
+        function nbShowCtxMenu(x, y, nbId) {
+            const menu = document.getElementById('nbCtxMenu');
+            menu.innerHTML = `
+                <button onclick="nbRenameNotebook('${nbId}')">重命名</button>
+                <button class="danger" onclick="nbDeleteNotebook('${nbId}')">删除</button>`;
+            menu.style.display = 'block';
+            const mw = 140, mh = 96;
+            menu.style.left = Math.min(x, window.innerWidth - mw - 8) + 'px';
+            menu.style.top = Math.min(y, window.innerHeight - mh - 8) + 'px';
+            setTimeout(() => {
+                const hide = () => { menu.style.display = 'none'; document.removeEventListener('pointerdown', hide, true); };
+                document.addEventListener('pointerdown', hide, true);
+            }, 50);
+        }
+        function nbRenameNotebook(nbId) {
+            document.getElementById('nbCtxMenu').style.display = 'none';
+            const nb = nbGetNotebook(nbId);
+            if (!nb) return;
+            const name = prompt('重命名笔记本：', nb.name);
+            if (!name || !name.trim()) return;
+            nb.name = name.trim();
+            nbTouch(nb);
+            saveData();
+            renderNotebooksPage();
+            nbSyncMeta();
+        }
+        async function nbDeleteNotebook(nbId) {
+            document.getElementById('nbCtxMenu').style.display = 'none';
+            const nb = nbGetNotebook(nbId);
+            if (!nb) return;
+            if (!confirm(`删除笔记本「${nb.name}」及其全部 ${(nb.pages || []).length} 页内容？`)) return;
+            const d = nbData();
+            d.items = d.items.filter(n => n.id !== nbId);
+            appData.notebooks.items = d.items;
+            // 该笔记本的复习计划一并移除
+            appData.notebooks.reviews = d.reviews.filter(r => r.notebookId !== nbId);
+            saveData();
+            renderNotebooksPage();
+            nbSyncMeta();
+            showToast('已删除');
+            // 后台清理本地与云端页面数据（尽力而为）
+            (async () => {
+                const cfg = appData.settings && appData.settings.r2Config;
+                for (const pg of (nb.pages || [])) {
+                    try { await deleteFileData('nbpage_' + pg.id); } catch (e) {}
+                    if (cfg && cfg.accessKeyId && cfg.autoSyncOnChange) {
+                        try { await r2DeleteObject('notebooks/pages/nbpage_' + pg.id); } catch (e) {}
+                    }
+                }
+            })();
+        }
+
+        // ==================== 编辑器状态 ====================
+        const nbState = {
+            notebookId: null,
+            pageIndex: 0,
+            content: null,          // 当前页内容
+            dirty: false,
+            tool: 'pen',            // pen | eraser | lasso | text | shape
+            prevTool: 'pen',
+            brushIndex: 0,
+            brushes: [
+                { type: 'pen', color: '#111111', mm: 0.5 },
+                { type: 'pen', color: '#555555', mm: 0.5 },
+                { type: 'hl',  color: '#a3a3a3', mm: 4 }
+            ],
+            shapeType: 'rect',
+            zoom: 1,
+            fitScale: 1,
+            undoStack: [],
+            redoStack: [],
+            selection: null,        // { ids:[], bbox:{x0,y0,x1,y1} }
+            bgImageCache: {},       // pageId -> HTMLImageElement
+            openPanel: null,
+            selectedTextId: null,
+            drawing: null           // 进行中的手势
+        };
+        window.__nbNativeSuspend = false;   // 为真时 boox-pen 挂起原生直渲染
+        window.__nbNativeWidth = 2;
+
+        function nbCurrentNotebook() { return nbGetNotebook(nbState.notebookId); }
+        function nbCurrentPage() {
+            const nb = nbCurrentNotebook();
+            return nb ? (nb.pages || [])[nbState.pageIndex] : null;
+        }
+        function nbDisplayScale() { return nbState.fitScale * nbState.zoom; }
+
+        // ==================== 编辑器打开 / 关闭 ====================
+        async function nbOpenNotebook(id, pageIndex) {
+            const nb = nbGetNotebook(id);
+            if (!nb) return;
+            if (!nb.pages || !nb.pages.length) {
+                nb.pages = [{ id: nbUid('nbp'), template: nb.template || 'blank', createdAt: new Date().toISOString() }];
+                saveData();
+            }
+            nbState.notebookId = id;
+            nbState.pageIndex = Math.min(Math.max(0, pageIndex || 0), nb.pages.length - 1);
+            nbState.zoom = 1;
+            nbState.undoStack = [];
+            nbState.redoStack = [];
+            nbState.selection = null;
+            nbState.bgImageCache = {};
+            document.getElementById('nbEditor').classList.add('show');
+            document.getElementById('nbTitle').textContent = nb.name;
+            nbSetTool('pen');
+            nbSelectBrush(nbState.brushIndex);
+            await nbLoadPage(nbState.pageIndex);
+        }
+
+        async function nbCloseEditor() {
+            await nbSavePageNow();
+            nbHidePanel();
+            nbHideOutline();
+            nbClearSelection();
+            document.getElementById('nbEditor').classList.remove('show');
+            nbState.content = null;
+            nbState.bgImageCache = {};
+            nbState.undoStack = [];
+            nbState.redoStack = [];
+            window.__nbNativeSuspend = false;
+            renderNotebooksPage();
+        }
+
+        // ==================== 页面加载 / 保存 ====================
+        let _nbSaveTimer = null;
+        let _nbCloudTimer = null;
+
+        function nbScheduleSave() {
+            nbState.dirty = true;
+            clearTimeout(_nbSaveTimer);
+            _nbSaveTimer = setTimeout(() => { nbSavePageNow(); }, 1200);
+        }
+
+        async function nbSavePageNow() {
+            clearTimeout(_nbSaveTimer);
+            if (!nbState.dirty || !nbState.content) return;
+            const page = nbCurrentPage();
+            if (!page) return;
+            nbState.dirty = false;
+            const pageId = page.id;
+            nbSnippetCache[pageId] = undefined;
+            try {
+                // 下划线开头的运行时缓存字段（如 _bb 包围盒）不落盘
+                await saveFileData('nbpage_' + pageId, JSON.stringify(nbState.content, (k, v) => k.startsWith('_') ? undefined : v));
+            } catch (e) {
+                console.error('[nb] 页面保存失败:', e);
+                showToast('保存失败：存储空间异常');
+                nbState.dirty = true;
+                return;
+            }
+            // 云同步（笔迹变更 8 秒去抖，避免每笔都推）
+            clearTimeout(_nbCloudTimer);
+            _nbCloudTimer = setTimeout(() => {
+                try { triggerSyncOnFileChange(pageId, 'notebook_page'); } catch (e) {}
+            }, 8000);
+        }
+
+        async function nbLoadPage(index) {
+            await nbSavePageNow();
+            const nb = nbCurrentNotebook();
+            if (!nb) return;
+            nbState.pageIndex = Math.min(Math.max(0, index), nb.pages.length - 1);
+            nbClearSelection();
+            nbHideTextToolbar();
+            nbState.undoStack = [];
+            nbState.redoStack = [];
+            const page = nb.pages[nbState.pageIndex];
+            nbState.content = await nbLoadPageContent(page.id);
+            nbState.dirty = false;
+            nbUpdatePageNo();
+            nbUpdateReviewBtn();
+            nbLayout();
+            nbRenderTexts();
+        }
+
+        function nbUpdatePageNo() {
+            const nb = nbCurrentNotebook();
+            if (!nb) return;
+            document.getElementById('nbPageNo').textContent = (nbState.pageIndex + 1) + ' / ' + nb.pages.length;
+            nbUpdateUndoBtns();
+        }
+
+        function nbPrevPage() { if (nbState.pageIndex > 0) nbLoadPage(nbState.pageIndex - 1); }
+        function nbNextPage() {
+            const nb = nbCurrentNotebook();
+            if (nb && nbState.pageIndex < nb.pages.length - 1) nbLoadPage(nbState.pageIndex + 1);
+        }
+
+        // ==================== 布局与渲染 ====================
+        function nbLayout() {
+            const wrap = document.getElementById('nbCanvasWrap');
+            if (!wrap || !document.getElementById('nbEditor').classList.contains('show')) return;
+            const availW = wrap.clientWidth - 32, availH = wrap.clientHeight - 32;
+            if (availW <= 0 || availH <= 0) return;
+            nbState.fitScale = Math.min(availW / NB_PAGE_W, availH / NB_PAGE_H);
+            const s = nbDisplayScale();
+            const cssW = Math.round(NB_PAGE_W * s), cssH = Math.round(NB_PAGE_H * s);
+            const box = document.getElementById('nbPageBox');
+            box.style.width = cssW + 'px';
+            box.style.height = cssH + 'px';
+            // 背衬分辨率上限，防止墨水屏大 DPR 下画布内存爆掉
+            const dpr = Math.min(window.devicePixelRatio || 1, 2400 / cssW, 3);
+            ['nbBgCanvas', 'nbCanvas', 'nbOverlayCanvas'].forEach(id => {
+                const c = document.getElementById(id);
+                c.width = Math.round(cssW * dpr);
+                c.height = Math.round(cssH * dpr);
+                c.style.width = cssW + 'px';
+                c.style.height = cssH + 'px';
+            });
+            const tl = document.getElementById('nbTextLayer');
+            tl.style.width = NB_PAGE_W + 'px';
+            tl.style.height = NB_PAGE_H + 'px';
+            tl.style.transform = 'scale(' + s + ')';
+            // 原生直渲染笔宽跟随缩放
+            const brush = nbState.brushes[nbState.brushIndex];
+            window.__nbNativeWidth = Math.max(1, Math.min(14, brush.mm * NB_MM * s));
+            nbDrawBg();
+            nbRedraw();
+        }
+
+        function nbCtx(id) {
+            const c = document.getElementById(id);
+            const ctx = c.getContext('2d');
+            const k = c.width / NB_PAGE_W;
+            ctx.setTransform(k, 0, 0, k, 0, 0);
+            return ctx;
+        }
+
+        // ---------- 模板绘制 ----------
+        function nbDrawTemplate(ctx, template) {
+            const W = NB_PAGE_W, H = NB_PAGE_H;
+            ctx.save();
+            ctx.strokeStyle = '#c9d4e0';
+            ctx.fillStyle = '#8b98a8';
+            ctx.lineWidth = 1;
+            const line = (x0, y0, x1, y1) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
+            const rules = (from, to, gap, x0, x1) => { for (let y = from; y <= to; y += gap) line(x0, y, x1, y); };
+            ctx.font = '15px sans-serif';
+            switch (template) {
+                case 'wide':
+                    rules(110, H - 60, 44, 50, W - 50);
+                    break;
+                case 'narrow':
+                    rules(96, H - 50, 29, 50, W - 50);
+                    break;
+                case 'cornell': {
+                    const cueX = 250, sumY = H - 240;
+                    ctx.lineWidth = 1.5;
+                    line(40, 96, W - 40, 96);            // 标题区
+                    line(cueX, 96, cueX, sumY);          // 线索栏
+                    line(40, sumY, W - 40, sumY);        // 总结区
+                    ctx.lineWidth = 1;
+                    rules(150, sumY - 20, 44, cueX + 16, W - 50);
+                    ctx.fillText('线索', 60, 130);
+                    ctx.fillText('笔记', cueX + 20, 130);
+                    ctx.fillText('总结', 60, sumY + 34);
+                    break;
+                }
+                case 'meeting': {
+                    ctx.lineWidth = 1.5;
+                    line(40, 90, W - 40, 90);
+                    ctx.lineWidth = 1;
+                    ctx.fillText('会议主题：', 52, 70);
+                    ctx.fillText('时间：', 52, 122);
+                    ctx.fillText('参与人：', W / 2, 122);
+                    line(40, 140, W - 40, 140);
+                    ctx.fillText('议程 / 讨论', 52, 172);
+                    rules(200, H - 330, 44, 50, W - 50);
+                    ctx.lineWidth = 1.5;
+                    line(40, H - 300, W - 40, H - 300);
+                    ctx.fillText('行动项', 52, H - 268);
+                    ctx.lineWidth = 1;
+                    rules(H - 240, H - 60, 44, 50, W - 50);
+                    break;
+                }
+                // blank: 无线条
+            }
+            ctx.restore();
+        }
+
+        async function nbDrawBg() {
+            const page = nbCurrentPage();
+            if (!page) return;
+            const ctx = nbCtx('nbBgCanvas');
+            ctx.clearRect(0, 0, NB_PAGE_W, NB_PAGE_H);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, NB_PAGE_W, NB_PAGE_H);
+            if (page.bgImage) {
+                let img = nbState.bgImageCache[page.id];
+                if (!img) {
+                    const data = await nbGetMediaData(page.bgImage);
+                    if (data && nbCurrentPage() === page) {
+                        img = new Image();
+                        await new Promise(res => { img.onload = res; img.onerror = res; img.src = data; });
+                        nbState.bgImageCache[page.id] = img;
+                    }
+                }
+                if (img && img.width) {
+                    const r = Math.min(NB_PAGE_W / img.width, NB_PAGE_H / img.height);
+                    const w = img.width * r, h = img.height * r;
+                    ctx.drawImage(img, (NB_PAGE_W - w) / 2, (NB_PAGE_H - h) / 2, w, h);
+                }
+            }
+            nbDrawTemplate(ctx, page.template || 'blank');
+        }
+
+        // ---------- 笔迹渲染 ----------
+        function nbPathStroke(ctx, pts) {
+            if (pts.length < 2) {
+                ctx.beginPath();
+                ctx.arc(pts[0][0], pts[0][1], ctx.lineWidth / 2 || 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                return;
+            }
+            ctx.beginPath();
+            ctx.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i < pts.length - 1; i++) {
+                const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+                ctx.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+            }
+            const last = pts[pts.length - 1];
+            ctx.lineTo(last[0], last[1]);
+            ctx.stroke();
+        }
+
+        function nbDrawStrokeObj(ctx, s) {
+            ctx.save();
+            ctx.strokeStyle = s.color;
+            ctx.fillStyle = s.color;
+            ctx.lineWidth = s.w;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.globalAlpha = s.tool === 'hl' ? 0.45 : 1;
+            for (const pts of s.paths) {
+                if (pts && pts.length) nbPathStroke(ctx, pts);
+            }
+            ctx.restore();
+        }
+
+        function nbRedraw() {
+            if (!nbState.content) return;
+            const ctx = nbCtx('nbCanvas');
+            ctx.clearRect(0, 0, NB_PAGE_W, NB_PAGE_H);
+            for (const s of nbState.content.strokes) nbDrawStrokeObj(ctx, s);
+            nbDrawOverlay();
+        }
+
+        function nbDrawOverlay() {
+            const ctx = nbCtx('nbOverlayCanvas');
+            ctx.clearRect(0, 0, NB_PAGE_W, NB_PAGE_H);
+            const d = nbState.drawing;
+            if (d && d.mode === 'lasso' && d.pts.length > 1) {
+                ctx.save();
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 1.5 / nbDisplayScale();
+                ctx.setLineDash([6, 5]);
+                ctx.beginPath();
+                ctx.moveTo(d.pts[0][0], d.pts[0][1]);
+                for (const p of d.pts) ctx.lineTo(p[0], p[1]);
+                ctx.stroke();
+                ctx.restore();
+            }
+            if (d && d.mode === 'shape' && d.preview) {
+                ctx.save();
+                ctx.strokeStyle = nbState.brushes[0].color;
+                ctx.lineWidth = 1.5;
+                for (const pts of d.preview) { if (pts.length) nbPathStroke(ctx, pts); }
+                ctx.restore();
+            }
+            const sel = nbState.selection;
+            if (sel) {
+                ctx.save();
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 1.5 / nbDisplayScale();
+                ctx.setLineDash([8, 6]);
+                const b = sel.bbox;
+                ctx.strokeRect(b.x0 - 8, b.y0 - 8, (b.x1 - b.x0) + 16, (b.y1 - b.y0) + 16);
+                ctx.restore();
+            }
+        }
+
+        // ==================== 撤销 / 重做 ====================
+        function nbPushOp(op) {
+            nbState.undoStack.push(op);
+            if (nbState.undoStack.length > NB_UNDO_MAX) nbState.undoStack.shift();
+            nbState.redoStack = [];
+            nbUpdateUndoBtns();
+        }
+        function nbUpdateUndoBtns() {
+            const u = document.getElementById('nbUndoBtn'), r = document.getElementById('nbRedoBtn');
+            if (u) u.disabled = !nbState.undoStack.length;
+            if (r) r.disabled = !nbState.redoStack.length;
+        }
+        function nbApplyOp(op, reverse) {
+            const c = nbState.content;
+            const t = op.t;
+            if (t === 'add' || t === 'del') {
+                const isAdd = (t === 'add') !== reverse;
+                if (isAdd) {
+                    const items = op.items || op.list.map((s, i) => ({ s, i: c.strokes.length + i }));
+                    items.slice().sort((a, b) => a.i - b.i).forEach(it => {
+                        c.strokes.splice(Math.min(it.i, c.strokes.length), 0, it.s);
+                    });
+                } else {
+                    const ids = new Set((op.items || op.list.map(s => ({ s }))).map(it => it.s.id));
+                    c.strokes = c.strokes.filter(s => !ids.has(s.id));
+                }
+            } else if (t === 'xform') {
+                const src = reverse ? op.before : op.after;
+                const map = {};
+                src.forEach(s => { map[s.id] = s; });
+                c.strokes = c.strokes.map(s => map[s.id] ? JSON.parse(JSON.stringify(map[s.id])) : s);
+            } else if (t === 'tadd' || t === 'tdel') {
+                const isAdd = (t === 'tadd') !== reverse;
+                if (isAdd) c.texts.push(op.box);
+                else c.texts = c.texts.filter(b => b.id !== op.box.id);
+                nbRenderTexts();
+            } else if (t === 'madd' || t === 'mdel') {
+                const isAdd = (t === 'madd') !== reverse;
+                if (isAdd) c.media.push(op.m);
+                else c.media = c.media.filter(m => m.id !== op.m.id);
+                nbRenderTexts();
+            }
+            nbClearSelection();
+            nbRedraw();
+            nbScheduleSave();
+        }
+        function nbUndo() {
+            const op = nbState.undoStack.pop();
+            if (!op) return;
+            nbApplyOp(op, true);
+            nbState.redoStack.push(op);
+            nbUpdateUndoBtns();
+        }
+        function nbRedo() {
+            const op = nbState.redoStack.pop();
+            if (!op) return;
+            nbApplyOp(op, false);
+            nbState.undoStack.push(op);
+            nbUpdateUndoBtns();
+        }
+
+        // ==================== 工具与笔刷 ====================
+        function nbSetTool(tool) {
+            if (nbState.tool === tool && (tool === 'lasso' || tool === 'text')) tool = 'pen'; // 再点一次取消
+            if (nbState.tool !== 'eraser') nbState.prevTool = nbState.tool;
+            nbState.tool = tool;
+            if (tool !== 'lasso') nbClearSelection();
+            // 非书写工具时挂起 Boox 原生直渲染，走标准指针事件
+            window.__nbNativeSuspend = (tool !== 'pen');
+            document.getElementById('nbEraserBtn').classList.toggle('active', tool === 'eraser');
+            document.getElementById('nbLassoBtn').classList.toggle('active', tool === 'lasso');
+            document.getElementById('nbTextBtn').classList.toggle('active', tool === 'text');
+            document.getElementById('nbShapeBtn').classList.toggle('active', tool === 'shape');
+            document.querySelectorAll('.nb-brush-btn').forEach((b, i) =>
+                b.classList.toggle('active', tool === 'pen' && i === nbState.brushIndex));
+            document.body.classList.toggle('nb-text-mode', tool === 'text');
+        }
+        function toggleNbEraser() {
+            nbSetTool(nbState.tool === 'eraser' ? (nbState.prevTool || 'pen') : 'eraser');
+        }
+        function nbBrushClick(i) {
+            if (nbState.tool === 'pen' && nbState.brushIndex === i) {
+                nbShowBrushPanel(i);     // 已选中的笔刷再点 → 配置
+            } else {
+                nbSelectBrush(i);
+            }
+        }
+        function nbSelectBrush(i) {
+            nbState.brushIndex = i;
+            nbSetTool('pen');
+            const brush = nbState.brushes[i];
+            window.__nbNativeWidth = Math.max(1, Math.min(14, brush.mm * NB_MM * nbDisplayScale()));
+            nbRenderBrushBtns();
+        }
+        function nbRenderBrushBtns() {
+            nbState.brushes.forEach((b, i) => {
+                const btn = document.getElementById('nbBrush' + i);
+                if (!btn) return;
+                btn.classList.toggle('hl', b.type === 'hl');
+                const dot = btn.querySelector('.nb-brush-dot');
+                dot.style.background = b.color;
+                const sz = Math.min(22, 10 + b.mm * 4);
+                dot.style.width = sz + 'px';
+                dot.style.height = sz + 'px';
+            });
+        }
+        function nbShowBrushPanel(i) {
+            const brush = nbState.brushes[i];
+            const mms = brush.type === 'hl' ? NB_HL_MMS : NB_PEN_MMS;
+            const panel = document.getElementById('nbPanel');
+            panel.innerHTML = `
+                <h4>笔刷 ${i + 1}</h4>
+                <div class="nb-panel-row">
+                    <button class="nb-panel-btn ${brush.type === 'pen' ? 'active' : ''}" onclick="nbSetBrushProp(${i},'type','pen')">钢笔</button>
+                    <button class="nb-panel-btn ${brush.type === 'hl' ? 'active' : ''}" onclick="nbSetBrushProp(${i},'type','hl')">高光笔</button>
+                </div>
+                <div class="nb-panel-row">${NB_COLORS.map(c =>
+                    `<div class="nb-swatch ${brush.color === c ? 'active' : ''}" style="background:${c}" onclick="nbSetBrushProp(${i},'color','${c}')"></div>`).join('')}
+                </div>
+                <div class="nb-panel-row">${mms.map(m =>
+                    `<button class="nb-width-chip ${Math.abs(brush.mm - m) < 0.01 ? 'active' : ''}" onclick="nbSetBrushProp(${i},'mm',${m})">${m}mm</button>`).join('')}
+                </div>`;
+            const btn = document.getElementById('nbBrush' + i);
+            const r = btn.getBoundingClientRect();
+            panel.style.left = 'auto';
+            panel.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+            panel.style.top = (r.bottom + 6) + 'px';
+            panel.classList.add('show');
+            nbState.openPanel = 'brush';
+        }
+        function nbSetBrushProp(i, prop, val) {
+            const brush = nbState.brushes[i];
+            brush[prop] = val;
+            if (prop === 'type') { brush.mm = val === 'hl' ? 4 : 0.5; nbShowBrushPanel(i); }
+            else nbShowBrushPanel(i);
+            nbSelectBrush(i);
+        }
+
+        // ==================== 指针输入（书写/橡皮/套索/图形/文本） ====================
+        function nbEventPoint(e) {
+            const c = document.getElementById('nbCanvas');
+            const r = c.getBoundingClientRect();
+            const s = nbDisplayScale();
+            return [
+                Math.round(((e.clientX - r.left) / s) * 10) / 10,
+                Math.round(((e.clientY - r.top) / s) * 10) / 10
+            ];
+        }
+
+        function nbInitCanvasEvents() {
+            const c = document.getElementById('nbCanvas');
+            if (c._nbBound) return;
+            c._nbBound = true;
+            c.addEventListener('pointerdown', nbPointerDown);
+            c.addEventListener('pointermove', nbPointerMove);
+            c.addEventListener('pointerup', nbPointerUp);
+            c.addEventListener('pointercancel', nbPointerUp);
+            c.addEventListener('contextmenu', e => e.preventDefault());
+        }
+
+        function nbPointerDown(e) {
+            if (e.button === 2) return;
+            nbHidePanel();
+            nbHideTextToolbar();
+            const p = nbEventPoint(e);
+            const tool = nbState.tool;
+            e.preventDefault();
+            try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
+
+            if (tool === 'pen') {
+                const brush = nbState.brushes[nbState.brushIndex];
+                nbState.drawing = {
+                    mode: 'stroke',
+                    stroke: { id: nbUid('s'), tool: brush.type, color: brush.color, w: Math.round(brush.mm * NB_MM * 100) / 100, paths: [[p]] },
+                    last: p
+                };
+            } else if (tool === 'eraser') {
+                nbState.drawing = { mode: 'erase', last: p, removed: [] };
+                nbEraseAt(p, p);
+            } else if (tool === 'lasso') {
+                const sel = nbState.selection;
+                if (sel && p[0] >= sel.bbox.x0 - 10 && p[0] <= sel.bbox.x1 + 10 && p[1] >= sel.bbox.y0 - 10 && p[1] <= sel.bbox.y1 + 10) {
+                    nbState.drawing = { mode: 'move', last: p, start: p, before: nbCopySelStrokes(), moved: false };
+                } else {
+                    nbClearSelection();
+                    nbState.drawing = { mode: 'lasso', pts: [p] };
+                }
+            } else if (tool === 'shape') {
+                nbState.drawing = { mode: 'shape', start: p, cur: p, freehand: [p], preview: null };
+            } else if (tool === 'text') {
+                nbAddTextBox(p[0], p[1]);
+                nbState.drawing = null;
+            }
+        }
+
+        function nbPointerMove(e) {
+            const d = nbState.drawing;
+            if (!d) return;
+            e.preventDefault();
+            const events = (typeof e.getCoalescedEvents === 'function' && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+            for (const ev of events) {
+                const p = nbEventPoint(ev);
+                if (d.mode === 'stroke') {
+                    const pts = d.stroke.paths[0];
+                    const lp = pts[pts.length - 1];
+                    if (Math.abs(p[0] - lp[0]) < 0.5 && Math.abs(p[1] - lp[1]) < 0.5) continue;
+                    pts.push(p);
+                    // 增量绘制
+                    const ctx = nbCtx('nbCanvas');
+                    ctx.save();
+                    ctx.strokeStyle = d.stroke.color;
+                    ctx.lineWidth = d.stroke.w;
+                    ctx.lineCap = 'round';
+                    ctx.globalAlpha = d.stroke.tool === 'hl' ? 0.45 : 1;
+                    ctx.beginPath();
+                    ctx.moveTo(lp[0], lp[1]);
+                    ctx.lineTo(p[0], p[1]);
+                    ctx.stroke();
+                    ctx.restore();
+                } else if (d.mode === 'erase') {
+                    nbEraseAt(d.last, p);
+                    d.last = p;
+                } else if (d.mode === 'lasso') {
+                    d.pts.push(p);
+                } else if (d.mode === 'move') {
+                    const dx = p[0] - d.last[0], dy = p[1] - d.last[1];
+                    if (dx || dy) {
+                        d.moved = true;
+                        nbTranslateSelection(dx, dy);
+                        d.last = p;
+                    }
+                } else if (d.mode === 'shape') {
+                    d.cur = p;
+                    d.freehand.push(p);
+                    d.preview = nbShapePaths(nbState.shapeType, d.start, p, d.freehand);
+                }
+            }
+            if (d.mode === 'lasso' || d.mode === 'shape') nbDrawOverlay();
+        }
+
+        function nbPointerUp(e) {
+            const d = nbState.drawing;
+            if (!d) return;
+            nbState.drawing = null;
+            if (d.mode === 'stroke') {
+                const pts = d.stroke.paths[0];
+                if (pts.length >= 1) {
+                    nbState.content.strokes.push(d.stroke);
+                    nbPushOp({ t: 'add', list: [d.stroke] });
+                    nbRedraw();
+                    nbScheduleSave();
+                }
+            } else if (d.mode === 'erase') {
+                if (d.removed.length) {
+                    nbPushOp({ t: 'del', items: d.removed });
+                    nbScheduleSave();
+                }
+                nbDrawOverlay();
+            } else if (d.mode === 'lasso') {
+                nbFinishLasso(d.pts);
+            } else if (d.mode === 'move') {
+                if (d.moved) {
+                    nbPushOp({ t: 'xform', before: d.before, after: nbCopySelStrokes() });
+                    nbScheduleSave();
+                } else {
+                    // 原地点击 → 取消选择
+                    nbClearSelection();
+                    nbDrawOverlay();
+                }
+            } else if (d.mode === 'shape') {
+                const paths = nbShapePaths(nbState.shapeType, d.start, d.cur, d.freehand);
+                if (paths && paths.some(p2 => p2.length > 1)) {
+                    const brush = nbState.brushes[0];
+                    const s = { id: nbUid('s'), tool: 'shape', color: brush.color, w: Math.max(1.5, Math.round(0.4 * NB_MM * 100) / 100), paths, shape: nbState.shapeType };
+                    nbState.content.strokes.push(s);
+                    nbPushOp({ t: 'add', list: [s] });
+                    nbRedraw();
+                    nbScheduleSave();
+                }
+                nbDrawOverlay();
+            }
+        }
+
+        // ---------- 笔画橡皮擦：整笔擦除 ----------
+        function nbEraseAt(p0, p1) {
+            const R = 8;   // 逻辑单位擦除半径
+            const c = nbState.content;
+            let removedAny = false;
+            for (let i = c.strokes.length - 1; i >= 0; i--) {
+                const s = c.strokes[i];
+                if (nbStrokeHits(s, p0, p1, R + s.w / 2)) {
+                    nbState.drawing.removed.push({ s, i });
+                    c.strokes.splice(i, 1);
+                    removedAny = true;
+                }
+            }
+            if (removedAny) nbRedraw();
+            // 橡皮位置光标
+            const ctx = nbCtx('nbOverlayCanvas');
+            ctx.clearRect(0, 0, NB_PAGE_W, NB_PAGE_H);
+            ctx.save();
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1 / nbDisplayScale();
+            ctx.beginPath();
+            ctx.arc(p1[0], p1[1], R, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function nbStrokeHits(s, a, b, r) {
+            // 粗判：线段与笔画包围盒
+            let bb = s._bb;
+            if (!bb) {
+                bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+                for (const pts of s.paths) for (const p of pts) {
+                    if (p[0] < bb.x0) bb.x0 = p[0];
+                    if (p[1] < bb.y0) bb.y0 = p[1];
+                    if (p[0] > bb.x1) bb.x1 = p[0];
+                    if (p[1] > bb.y1) bb.y1 = p[1];
+                }
+                s._bb = bb;
+            }
+            const lo = [Math.min(a[0], b[0]) - r, Math.min(a[1], b[1]) - r];
+            const hi = [Math.max(a[0], b[0]) + r, Math.max(a[1], b[1]) + r];
+            if (hi[0] < bb.x0 || lo[0] > bb.x1 || hi[1] < bb.y0 || lo[1] > bb.y1) return false;
+            for (const pts of s.paths) {
+                for (let i = 0; i < pts.length; i++) {
+                    if (nbSegDist(pts[i], a, b) <= r) return true;
+                    if (i > 0 && nbSegDist(a, pts[i - 1], pts[i]) <= r) return true;
+                }
+            }
+            return false;
+        }
+        function nbSegDist(p, a, b) {
+            const dx = b[0] - a[0], dy = b[1] - a[1];
+            const l2 = dx * dx + dy * dy;
+            let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0;
+            t = Math.max(0, Math.min(1, t));
+            const x = a[0] + t * dx, y = a[1] + t * dy;
+            return Math.hypot(p[0] - x, p[1] - y);
+        }
+
+        // ==================== 套索选择 ====================
+        function nbPointInPoly(p, poly) {
+            let inside = false;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+                if (((yi > p[1]) !== (yj > p[1])) && (p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi)) inside = !inside;
+            }
+            return inside;
+        }
+
+        function nbFinishLasso(poly) {
+            if (!poly || poly.length < 3) { nbDrawOverlay(); return; }
+            const ids = [];
+            for (const s of nbState.content.strokes) {
+                if (s.tool !== 'pen' && s.tool !== 'hl') continue;   // 仅套索手写内容
+                let inside = 0, total = 0;
+                for (const pts of s.paths) for (const p of pts) { total++; if (nbPointInPoly(p, poly)) inside++; }
+                if (total && inside / total > 0.5) ids.push(s.id);
+            }
+            if (!ids.length) { nbState.selection = null; nbDrawOverlay(); nbHideSelToolbar(); return; }
+            nbState.selection = { ids, bbox: nbSelBBox(ids) };
+            nbDrawOverlay();
+            nbShowSelToolbar();
+        }
+
+        function nbSelStrokes() {
+            const set = new Set(nbState.selection ? nbState.selection.ids : []);
+            return nbState.content.strokes.filter(s => set.has(s.id));
+        }
+        function nbCopySelStrokes() { return JSON.parse(JSON.stringify(nbSelStrokes())); }
+        function nbSelBBox(ids) {
+            const set = new Set(ids);
+            const bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+            for (const s of nbState.content.strokes) {
+                if (!set.has(s.id)) continue;
+                for (const pts of s.paths) for (const p of pts) {
+                    if (p[0] < bb.x0) bb.x0 = p[0];
+                    if (p[1] < bb.y0) bb.y0 = p[1];
+                    if (p[0] > bb.x1) bb.x1 = p[0];
+                    if (p[1] > bb.y1) bb.y1 = p[1];
+                }
+            }
+            return bb;
+        }
+        function nbClearSelection() {
+            nbState.selection = null;
+            nbHideSelToolbar();
+        }
+        function nbTranslateSelection(dx, dy) {
+            for (const s of nbSelStrokes()) {
+                for (const pts of s.paths) for (const p of pts) { p[0] += dx; p[1] += dy; }
+                delete s._bb;
+            }
+            nbState.selection.bbox = nbSelBBox(nbState.selection.ids);
+            nbRedraw();
+            nbPositionSelToolbar();
+        }
+        function nbScaleSelection(k) {
+            const sel = nbState.selection;
+            if (!sel) return;
+            const before = nbCopySelStrokes();
+            const cx = (sel.bbox.x0 + sel.bbox.x1) / 2, cy = (sel.bbox.y0 + sel.bbox.y1) / 2;
+            for (const s of nbSelStrokes()) {
+                for (const pts of s.paths) for (const p of pts) {
+                    p[0] = Math.round((cx + (p[0] - cx) * k) * 10) / 10;
+                    p[1] = Math.round((cy + (p[1] - cy) * k) * 10) / 10;
+                }
+                s.w = Math.round(s.w * k * 100) / 100;
+                delete s._bb;
+            }
+            sel.bbox = nbSelBBox(sel.ids);
+            nbPushOp({ t: 'xform', before, after: nbCopySelStrokes() });
+            nbRedraw();
+            nbScheduleSave();
+            nbPositionSelToolbar();
+        }
+        function nbColorSelection(color) {
+            const before = nbCopySelStrokes();
+            for (const s of nbSelStrokes()) s.color = color;
+            nbPushOp({ t: 'xform', before, after: nbCopySelStrokes() });
+            nbRedraw();
+            nbScheduleSave();
+            nbShowSelToolbar();
+        }
+        function nbCopySelection() {
+            const copies = nbCopySelStrokes().map(s => {
+                s.id = nbUid('s');
+                for (const pts of s.paths) for (const p of pts) { p[0] += 25; p[1] += 25; }
+                delete s._bb;
+                return s;
+            });
+            nbState.content.strokes.push(...copies);
+            nbPushOp({ t: 'add', list: copies });
+            nbState.selection = { ids: copies.map(s => s.id), bbox: nbSelBBox(copies.map(s => s.id)) };
+            nbRedraw();
+            nbScheduleSave();
+            nbShowSelToolbar();
+        }
+        function nbDeleteSelection() {
+            const set = new Set(nbState.selection ? nbState.selection.ids : []);
+            const items = [];
+            nbState.content.strokes.forEach((s, i) => { if (set.has(s.id)) items.push({ s, i }); });
+            nbState.content.strokes = nbState.content.strokes.filter(s => !set.has(s.id));
+            nbPushOp({ t: 'del', items });
+            nbClearSelection();
+            nbRedraw();
+            nbScheduleSave();
+        }
+
+        function nbShowSelToolbar() {
+            const bar = document.getElementById('nbSelToolbar');
+            bar.innerHTML = `
+                <button onclick="nbScaleSelection(1.15)">放大</button>
+                <button onclick="nbScaleSelection(0.87)">缩小</button>
+                <span class="sep"></span>
+                ${NB_COLORS.map(c => `<button onclick="nbColorSelection('${c}')" title="改色"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c};vertical-align:middle;"></span></button>`).join('')}
+                <span class="sep"></span>
+                <button onclick="nbRecognizeSelection()">AI识别</button>
+                <button onclick="nbCopySelection()">复制</button>
+                <button onclick="nbDeleteSelection()" style="color:#ef4444;">删除</button>`;
+            bar.classList.add('show');
+            nbPositionSelToolbar();
+        }
+        function nbPositionSelToolbar() {
+            const bar = document.getElementById('nbSelToolbar');
+            const sel = nbState.selection;
+            if (!sel || !bar.classList.contains('show')) return;
+            const box = document.getElementById('nbPageBox');
+            const ed = document.getElementById('nbEditor');
+            const br = box.getBoundingClientRect(), er = ed.getBoundingClientRect();
+            const s = nbDisplayScale();
+            let x = br.left - er.left + sel.bbox.x0 * s;
+            let y = br.top - er.top + sel.bbox.y0 * s - 52;
+            x = Math.max(64, Math.min(x, window.innerWidth - 330));
+            y = Math.max(58, y);
+            bar.style.left = x + 'px';
+            bar.style.top = y + 'px';
+        }
+        function nbHideSelToolbar() {
+            document.getElementById('nbSelToolbar')?.classList.remove('show');
+        }
+
+        // 套索选区 → 图片 → AI 识别（含数学公式）
+        async function nbRecognizeSelection() {
+            const strokes = nbSelStrokes();
+            if (!strokes.length) return;
+            const bb = nbState.selection.bbox;
+            const pad = 16;
+            const w = bb.x1 - bb.x0 + pad * 2, h = bb.y1 - bb.y0 + pad * 2;
+            const scale = Math.min(2.5, 900 / Math.max(w, h));
+            const cv = document.createElement('canvas');
+            cv.width = Math.max(32, Math.round(w * scale));
+            cv.height = Math.max(32, Math.round(h * scale));
+            const ctx = cv.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, cv.width, cv.height);
+            ctx.setTransform(scale, 0, 0, scale, -bb.x0 * scale + pad * scale, -bb.y0 * scale + pad * scale);
+            for (const s of strokes) nbDrawStrokeObj(ctx, s);
+            const img = cv.toDataURL('image/png');
+            showToast('AI 识别中…');
+            try {
+                const text = await callAI(
+                    '你是一个手写内容识别助手。识别图片中的手写内容并转为文字，数学公式用 LaTeX（$...$ 或 $$...$$）表示。只输出识别结果，不要解释。',
+                    [{ role: 'user', content: [
+                        { type: 'image_url', image_url: { url: img } },
+                        { type: 'text', text: '请识别这段手写内容（可能包含数学公式）。' }
+                    ] }]
+                );
+                nbShowRecognizeResult(text);
+            } catch (e) {
+                showToast('AI 识别失败: ' + e.message);
+            }
+        }
+        function nbShowRecognizeResult(text) {
+            const bb = nbState.selection ? nbState.selection.bbox : { x0: 100, y1: 100 };
+            document.getElementById('nbQuizTitle').textContent = 'AI 识别结果';
+            const body = document.getElementById('nbQuizBody');
+            body.innerHTML = renderChatMarkdownLatex(text);
+            try { renderLectureMath(body); } catch (e) {}
+            body.dataset.raw = text;
+            document.getElementById('nbQuizFoot').innerHTML = `
+                <button class="nb-panel-btn" onclick="nbInsertRecognizedText(${Math.round(bb.x0)},${Math.round(bb.y1) + 20})">插入为文本框</button>
+                <button class="nb-panel-btn" onclick="nbCopyText()">复制文本</button>
+                <button class="nb-panel-btn primary" onclick="nbHideQuiz()">关闭</button>`;
+            document.getElementById('nbQuizModal').classList.add('show');
+        }
+        function nbCopyText() {
+            const raw = document.getElementById('nbQuizBody').dataset.raw || '';
+            navigator.clipboard?.writeText(raw).then(() => showToast('已复制'), () => showToast('复制失败'));
+        }
+        function nbInsertRecognizedText(x, y) {
+            const raw = document.getElementById('nbQuizBody').dataset.raw || '';
+            nbHideQuiz();
+            nbAddTextBox(Math.min(x, NB_PAGE_W - 250), Math.min(y, NB_PAGE_H - 80), raw, true);
+        }
+
+        // ==================== 图形 ====================
+        function nbShapePaths(type, a, b, freehand) {
+            const x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]);
+            const x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+            const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+            const rr = (v) => Math.round(v * 10) / 10;
+            const P = (x, y) => [rr(x), rr(y)];
+            const arrowHead = (fx, fy, tx, ty) => {
+                const ang = Math.atan2(ty - fy, tx - fx);
+                const L = Math.max(10, Math.hypot(tx - fx, ty - fy) * 0.08);
+                return [
+                    [P(tx - L * Math.cos(ang - 0.45), ty - L * Math.sin(ang - 0.45)), P(tx, ty), P(tx - L * Math.cos(ang + 0.45), ty - L * Math.sin(ang + 0.45))]
+                ];
+            };
+            switch (type) {
+                case 'circle': {
+                    const rx = Math.max(2, (x1 - x0) / 2), ry = Math.max(2, (y1 - y0) / 2);
+                    const pts = [];
+                    for (let i = 0; i <= 72; i++) {
+                        const t = i / 72 * Math.PI * 2;
+                        pts.push(P(cx + rx * Math.cos(t), cy + ry * Math.sin(t)));
+                    }
+                    return [pts];
+                }
+                case 'rect':
+                    return [[P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1), P(x0, y0)]];
+                case 'triangle':
+                    return [[P(cx, y0), P(x1, y1), P(x0, y1), P(cx, y0)]];
+                case 'line':
+                    return [[P(a[0], a[1]), P(b[0], b[1])]];
+                case 'arrow':
+                    return [[P(a[0], a[1]), P(b[0], b[1])], ...arrowHead(a[0], a[1], b[0], b[1])];
+                case 'curve': {
+                    // 平滑曲线：对手绘轨迹做抽稀 + Chaikin 平滑
+                    let pts = (freehand || []).filter((p, i) => i % 3 === 0 || i === freehand.length - 1);
+                    for (let it = 0; it < 2; it++) {
+                        const out = [pts[0]];
+                        for (let i = 0; i < pts.length - 1; i++) {
+                            const p = pts[i], q = pts[i + 1];
+                            out.push(P(p[0] * 0.75 + q[0] * 0.25, p[1] * 0.75 + q[1] * 0.25));
+                            out.push(P(p[0] * 0.25 + q[0] * 0.75, p[1] * 0.25 + q[1] * 0.75));
+                        }
+                        out.push(pts[pts.length - 1]);
+                        pts = out;
+                    }
+                    return [pts];
+                }
+                case 'axes2': {
+                    return [
+                        [P(x0, cy), P(x1, cy)], ...arrowHead(x0, cy, x1, cy),
+                        [P(cx, y1), P(cx, y0)], ...arrowHead(cx, y1, cx, y0)
+                    ];
+                }
+                case 'axes3': {
+                    const ox = cx, oy = cy;
+                    return [
+                        [P(ox, oy), P(x1, oy)], ...arrowHead(ox, oy, x1, oy),                    // x →
+                        [P(ox, oy), P(ox, y0)], ...arrowHead(ox, oy, ox, y0),                    // z ↑
+                        [P(ox, oy), P(x0 + (cx - x0) * 0.15, y1)], ...arrowHead(ox, oy, x0 + (cx - x0) * 0.15, y1)  // y ↙
+                    ];
+                }
+            }
+            return null;
+        }
+
+        // ==================== 文本框 ====================
+        function nbRenderTexts() {
+            const layer = document.getElementById('nbTextLayer');
+            if (!layer || !nbState.content) return;
+            layer.innerHTML = '';
+            for (const box of nbState.content.texts) layer.appendChild(nbBuildTextEl(box));
+            for (const m of nbState.content.media) layer.appendChild(nbBuildMediaEl(m));
+        }
+
+        function nbBuildTextEl(box) {
+            const el = document.createElement('div');
+            el.className = 'nb-textbox' + (box.vertical ? ' vertical' : '');
+            el.dataset.id = box.id;
+            el.style.left = box.x + 'px';
+            el.style.top = box.y + 'px';
+            if (box.w) el.style.width = box.w + 'px';
+            const inner = document.createElement('div');
+            inner.className = 'nb-textbox-inner';
+            inner.contentEditable = 'true';
+            inner.textContent = box.text || '';
+            inner.style.fontSize = (box.fontSize || 18) + 'px';
+            inner.style.color = box.color || '#111111';
+            inner.style.fontWeight = box.bold ? '700' : '400';
+            inner.style.fontStyle = box.italic ? 'italic' : 'normal';
+            el.appendChild(inner);
+            const del = document.createElement('button');
+            del.className = 'nb-media-del';
+            del.textContent = '×';
+            del.onclick = (e) => { e.stopPropagation(); nbDeleteTextBox(box.id); };
+            el.appendChild(del);
+
+            inner.addEventListener('input', () => {
+                box.text = inner.textContent;
+                nbScheduleSave();
+            });
+            inner.addEventListener('focus', () => nbSelectTextBox(box.id));
+            // 边框拖动 + 点击边框弹出样式工具条
+            el.addEventListener('pointerdown', (e) => {
+                if (e.target === inner) return;   // 内部点击 → 编辑文字
+                e.preventDefault();
+                e.stopPropagation();
+                nbSelectTextBox(box.id);
+                const s = nbDisplayScale();
+                const sx = e.clientX, sy = e.clientY, ox = box.x, oy = box.y;
+                let moved = false;
+                const mv = (ev) => {
+                    const dx = (ev.clientX - sx) / s, dy = (ev.clientY - sy) / s;
+                    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+                    box.x = Math.round(ox + dx);
+                    box.y = Math.round(oy + dy);
+                    el.style.left = box.x + 'px';
+                    el.style.top = box.y + 'px';
+                    nbPositionTextToolbar(box.id);
+                };
+                const up = () => {
+                    document.removeEventListener('pointermove', mv);
+                    document.removeEventListener('pointerup', up);
+                    if (moved) nbScheduleSave();
+                };
+                document.addEventListener('pointermove', mv);
+                document.addEventListener('pointerup', up);
+            });
+            return el;
+        }
+
+        function nbFindText(id) { return nbState.content.texts.find(t => t.id === id); }
+        function nbTextEl(id) { return document.querySelector(`.nb-textbox[data-id="${id}"]`); }
+
+        function nbAddTextBox(x, y, text, keepTool) {
+            const box = { id: nbUid('t'), x: Math.round(x), y: Math.round(y), text: text || '', fontSize: 18, color: '#111111', bold: false, italic: false, vertical: false };
+            nbState.content.texts.push(box);
+            nbPushOp({ t: 'tadd', box });
+            nbRenderTexts();
+            nbScheduleSave();
+            if (!keepTool) nbSetTool('pen');
+            nbSelectTextBox(box.id);
+            setTimeout(() => { nbTextEl(box.id)?.querySelector('.nb-textbox-inner')?.focus(); }, 60);
+        }
+        function nbDeleteTextBox(id) {
+            const box = nbFindText(id);
+            if (!box) return;
+            nbState.content.texts = nbState.content.texts.filter(t => t.id !== id);
+            nbPushOp({ t: 'tdel', box });
+            nbRenderTexts();
+            nbScheduleSave();
+            nbHideTextToolbar();
+        }
+        function nbSelectTextBox(id) {
+            nbState.selectedTextId = id;
+            document.querySelectorAll('.nb-textbox').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
+            nbShowTextToolbar(id);
+        }
+        function nbShowTextToolbar(id) {
+            const box = nbFindText(id);
+            if (!box) return;
+            const bar = document.getElementById('nbTextToolbar');
+            bar.innerHTML = `
+                <button onclick="nbTextProp('${id}','fontSize',-2)">A−</button>
+                <button onclick="nbTextProp('${id}','fontSize',2)">A＋</button>
+                <span class="sep"></span>
+                ${NB_COLORS.map(c => `<button onclick="nbTextProp('${id}','color','${c}')"><span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:${c};vertical-align:middle;"></span></button>`).join('')}
+                <span class="sep"></span>
+                <button class="${box.bold ? 'on' : ''}" onclick="nbTextProp('${id}','bold')" style="font-weight:700;">B</button>
+                <button class="${box.italic ? 'on' : ''}" onclick="nbTextProp('${id}','italic')" style="font-style:italic;">I</button>
+                <button class="${box.vertical ? 'on' : ''}" onclick="nbTextProp('${id}','vertical')">${box.vertical ? '竖排' : '横排'}</button>
+                <span class="sep"></span>
+                <button style="color:#ef4444;" onclick="nbDeleteTextBox('${id}')">删除</button>`;
+            bar.classList.add('show');
+            nbPositionTextToolbar(id);
+        }
+        function nbPositionTextToolbar(id) {
+            const bar = document.getElementById('nbTextToolbar');
+            const el = nbTextEl(id);
+            if (!el || !bar.classList.contains('show')) return;
+            const er = document.getElementById('nbEditor').getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            bar.style.left = Math.max(64, Math.min(r.left - er.left, window.innerWidth - 340)) + 'px';
+            bar.style.top = Math.max(58, r.top - er.top - 48) + 'px';
+        }
+        function nbHideTextToolbar() {
+            document.getElementById('nbTextToolbar')?.classList.remove('show');
+            document.querySelectorAll('.nb-textbox.selected').forEach(el => el.classList.remove('selected'));
+            nbState.selectedTextId = null;
+        }
+        function nbTextProp(id, prop, val) {
+            const box = nbFindText(id);
+            if (!box) return;
+            if (prop === 'fontSize') box.fontSize = Math.max(10, Math.min(72, (box.fontSize || 18) + val));
+            else if (prop === 'color') box.color = val;
+            else box[prop] = !box[prop];
+            nbRenderTexts();
+            nbSelectTextBox(id);
+            nbScheduleSave();
+        }
+
+        // ==================== 媒体（图片 / 音频） ====================
+        function nbBuildMediaEl(m) {
+            let el;
+            if (m.type === 'image') {
+                el = document.createElement('div');
+                el.className = 'nb-media-img';
+                el.style.left = m.x + 'px';
+                el.style.top = m.y + 'px';
+                el.style.width = (m.w || 240) + 'px';
+                el.style.height = (m.h || 180) + 'px';
+                const img = document.createElement('img');
+                nbGetMediaData(m.mediaId).then(d => { if (d) img.src = d; });
+                el.appendChild(img);
+            } else {
+                el = document.createElement('div');
+                el.className = 'nb-media-audio';
+                el.style.left = m.x + 'px';
+                el.style.top = m.y + 'px';
+                const play = document.createElement('button');
+                play.textContent = '▶';
+                play.style.cssText = 'border:none;background:var(--accent);color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;flex-shrink:0;';
+                play.onclick = async (e) => {
+                    e.stopPropagation();
+                    const d = await nbGetMediaData(m.mediaId);
+                    if (!d) { showToast('音频不存在'); return; }
+                    if (el._audio && !el._audio.paused) { el._audio.pause(); play.textContent = '▶'; return; }
+                    el._audio = el._audio || new Audio(d);
+                    el._audio.play();
+                    play.textContent = '⏸';
+                    el._audio.onended = () => { play.textContent = '▶'; };
+                };
+                el.appendChild(play);
+                const label = document.createElement('span');
+                label.textContent = m.name || '录音';
+                el.appendChild(label);
+            }
+            el.dataset.id = m.id;
+            const del = document.createElement('button');
+            del.className = 'nb-media-del';
+            del.textContent = '×';
+            del.onclick = (e) => { e.stopPropagation(); nbDeleteMedia(m.id); };
+            el.appendChild(del);
+            el.addEventListener('pointerdown', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                e.preventDefault();
+                e.stopPropagation();
+                document.querySelectorAll('.nb-media-img.selected,.nb-media-audio.selected,.nb-textbox.selected').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                const s = nbDisplayScale();
+                const sx = e.clientX, sy = e.clientY, ox = m.x, oy = m.y;
+                let moved = false;
+                const mv = (ev) => {
+                    const dx = (ev.clientX - sx) / s, dy = (ev.clientY - sy) / s;
+                    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+                    m.x = Math.round(ox + dx);
+                    m.y = Math.round(oy + dy);
+                    el.style.left = m.x + 'px';
+                    el.style.top = m.y + 'px';
+                };
+                const up = () => {
+                    document.removeEventListener('pointermove', mv);
+                    document.removeEventListener('pointerup', up);
+                    if (moved) nbScheduleSave();
+                };
+                document.addEventListener('pointermove', mv);
+                document.addEventListener('pointerup', up);
+            });
+            return el;
+        }
+        function nbDeleteMedia(id) {
+            const m = nbState.content.media.find(x => x.id === id);
+            if (!m) return;
+            nbState.content.media = nbState.content.media.filter(x => x.id !== id);
+            nbPushOp({ t: 'mdel', m });
+            nbRenderTexts();
+            nbScheduleSave();
+        }
+
+        // ==================== 左栏面板 ====================
+        function nbShowPanel(kind, btn) {
+            if (nbState.openPanel === kind) { nbHidePanel(); return; }
+            const panel = document.getElementById('nbPanel');
+            const builders = {
+                template: nbPanelTemplate, shape: nbPanelShape, page: nbPanelPage,
+                zoom: nbPanelZoom, export: nbPanelExport, insert: nbPanelInsert,
+                search: nbPanelSearch, more: nbPanelMore
+            };
+            panel.innerHTML = builders[kind]();
+            const r = btn.getBoundingClientRect();
+            panel.style.right = 'auto';
+            panel.style.left = (r.right + 8) + 'px';
+            panel.style.top = Math.min(r.top, window.innerHeight - 320) + 'px';
+            panel.classList.add('show');
+            nbState.openPanel = kind;
+        }
+        function nbHidePanel() {
+            document.getElementById('nbPanel')?.classList.remove('show');
+            nbState.openPanel = null;
+        }
+
+        function nbPanelTemplate() {
+            const page = nbCurrentPage();
+            const cur = page ? (page.template || 'blank') : 'blank';
+            return `<h4>更改模板</h4>
+                <div class="nb-panel-row">${Object.keys(NB_TEMPLATES).map(k =>
+                    `<button class="nb-panel-btn ${k === cur ? 'active' : ''}" data-tpl="${k}" onclick="document.querySelectorAll('#nbPanel [data-tpl]').forEach(b=>b.classList.remove('active'));this.classList.add('active');">${NB_TEMPLATES[k]}</button>`).join('')}
+                </div>
+                <div class="nb-panel-row">
+                    <button class="nb-panel-btn primary" onclick="nbApplyTemplate(false)">应用到当前页</button>
+                    <button class="nb-panel-btn" onclick="nbApplyTemplate(true)">应用到整个笔记本</button>
+                </div>`;
+        }
+        function nbApplyTemplate(whole) {
+            const btn = document.querySelector('#nbPanel [data-tpl].active');
+            const tpl = btn ? btn.dataset.tpl : 'blank';
+            const nb = nbCurrentNotebook();
+            if (!nb) return;
+            if (whole) {
+                nb.template = tpl;
+                nb.pages.forEach(p => { p.template = tpl; });
+            } else {
+                nb.pages[nbState.pageIndex].template = tpl;
+            }
+            nbTouch(nb);
+            saveData();
+            nbDrawBg();
+            nbHidePanel();
+            nbSyncMeta();
+            showToast(whole ? '已应用到整个笔记本' : '已应用到当前页');
+        }
+
+        function nbPanelShape() {
+            const shapes = [['circle', '圆'], ['rect', '长方形'], ['triangle', '三角形'], ['line', '直线'],
+                            ['curve', '平滑曲线'], ['arrow', '箭头'], ['axes2', '二维坐标系'], ['axes3', '三维坐标系']];
+            return `<h4>插入图形（在页面上拖动绘制）</h4>
+                <div class="nb-panel-row">${shapes.map(([k, n]) =>
+                    `<button class="nb-panel-btn ${nbState.shapeType === k && nbState.tool === 'shape' ? 'active' : ''}" onclick="nbPickShape('${k}')">${n}</button>`).join('')}
+                </div>`;
+        }
+        function nbPickShape(k) {
+            nbState.shapeType = k;
+            nbSetTool('shape');
+            nbHidePanel();
+            showToast('在页面上拖动绘制' + (NB_TEMPLATES[k] || ''));
+        }
+
+        function nbPanelPage() {
+            const nb = nbCurrentNotebook();
+            const cur = nbCurrentPage();
+            const opts = [`<option value="__cur__">当前页模板（${NB_TEMPLATES[cur.template || 'blank']}）</option>`]
+                .concat(Object.keys(NB_TEMPLATES).map(k => `<option value="${k}">${NB_TEMPLATES[k]}</option>`)).join('');
+            return `<h4>页面管理（共 ${nb.pages.length} 页）</h4>
+                <div class="nb-panel-row"><select id="nbNewPageTpl" style="flex:1;">${opts}</select></div>
+                <div class="nb-panel-row">
+                    <button class="nb-panel-btn" onclick="nbInsertPage(0)">在当前页前插入</button>
+                    <button class="nb-panel-btn primary" onclick="nbInsertPage(1)">在当前页后插入</button>
+                </div>
+                <div class="nb-panel-row">
+                    <button class="nb-panel-btn" onclick="document.getElementById('nbPdfInput').click()">插入 PDF 文件</button>
+                    <button class="nb-panel-btn danger" onclick="nbDeleteCurrentPage()">删除当前页</button>
+                </div>`;
+        }
+        function nbInsertPage(after) {
+            const nb = nbCurrentNotebook();
+            if (!nb) return;
+            const sel = document.getElementById('nbNewPageTpl');
+            const tpl = (!sel || sel.value === '__cur__') ? (nbCurrentPage().template || 'blank') : sel.value;
+            const page = { id: nbUid('nbp'), template: tpl, createdAt: new Date().toISOString() };
+            const at = nbState.pageIndex + (after ? 1 : 0);
+            nb.pages.splice(at, 0, page);
+            nbTouch(nb);
+            saveData();
+            nbHidePanel();
+            nbSyncMeta();
+            nbLoadPage(at);
+            showToast('已插入新页');
+        }
+        async function nbDeleteCurrentPage() {
+            const nb = nbCurrentNotebook();
+            if (!nb) return;
+            if (nb.pages.length <= 1) { showToast('至少保留一页'); return; }
+            if (!confirm('删除当前页及其全部内容？')) return;
+            const page = nb.pages[nbState.pageIndex];
+            nb.pages.splice(nbState.pageIndex, 1);
+            nbTouch(nb);
+            nbState.dirty = false;   // 别把已删除页面又存回去
+            saveData();
+            nbHidePanel();
+            try { await deleteFileData('nbpage_' + page.id); } catch (e) {}
+            try { triggerSyncOnFileChange(page.id, 'notebook_page_delete'); } catch (e) {}
+            nbLoadPage(Math.min(nbState.pageIndex, nb.pages.length - 1));
+            showToast('已删除页面');
+        }
+
+        function nbPanelZoom() {
+            return `<h4>缩放</h4>
+                <div class="nb-panel-row">
+                    <button class="nb-panel-btn" onclick="nbZoomBy(-5)">−5%</button>
+                    <span id="nbZoomLabel" style="min-width:56px;text-align:center;font-weight:700;">${Math.round(nbState.zoom * 100)}%</span>
+                    <button class="nb-panel-btn" onclick="nbZoomBy(5)">＋5%</button>
+                    <button class="nb-panel-btn" onclick="nbZoomSet(100)">100%</button>
+                </div>
+                <div style="font-size:12px;color:var(--text-muted);">范围 50% – 200%</div>`;
+        }
+        function nbZoomBy(d) { nbZoomSet(Math.round(nbState.zoom * 100) + d); }
+        function nbZoomSet(pct) {
+            nbState.zoom = Math.max(0.5, Math.min(2, pct / 100));
+            const l = document.getElementById('nbZoomLabel');
+            if (l) l.textContent = Math.round(nbState.zoom * 100) + '%';
+            nbLayout();
+            nbRenderTexts();
+        }
+
+        function nbPanelExport() {
+            const nb = nbCurrentNotebook();
+            return `<h4>导出 PDF</h4>
+                <div class="nb-panel-row">
+                    <input type="text" id="nbExportRange" placeholder="页码，如 1-3,5（留空=全部 ${nb.pages.length} 页）" style="flex:1;">
+                </div>
+                <div class="nb-panel-row">
+                    <button class="nb-panel-btn primary" onclick="nbExportPdf()">导出</button>
+                </div>`;
+        }
+        function nbParseRange(str, max) {
+            if (!str || !str.trim()) return Array.from({ length: max }, (_, i) => i);
+            const out = new Set();
+            for (const part of str.split(/[,，]/)) {
+                const m = part.trim().match(/^(\d+)\s*[-–]\s*(\d+)$/);
+                if (m) {
+                    for (let i = +m[1]; i <= +m[2]; i++) if (i >= 1 && i <= max) out.add(i - 1);
+                } else if (/^\d+$/.test(part.trim())) {
+                    const i = +part.trim();
+                    if (i >= 1 && i <= max) out.add(i - 1);
+                }
+            }
+            return [...out].sort((a, b) => a - b);
+        }
+        async function nbExportPdf() {
+            const nb = nbCurrentNotebook();
+            if (!nb) return;
+            const idxs = nbParseRange(document.getElementById('nbExportRange')?.value, nb.pages.length);
+            if (!idxs.length) { showToast('页码无效'); return; }
+            if (!window.PDFLib) { showToast('pdf-lib 未加载'); return; }
+            await nbSavePageNow();
+            showToast(`正在导出 ${idxs.length} 页…`);
+            nbHidePanel();
+            try {
+                const doc = await PDFLib.PDFDocument.create();
+                for (const i of idxs) {
+                    const page = nb.pages[i];
+                    const content = (i === nbState.pageIndex && nbState.content) ? nbState.content : await nbLoadPageContent(page.id);
+                    const cv = await nbRenderPageToCanvas(page, content, 1600);
+                    const jpg = await doc.embedJpg(cv.toDataURL('image/jpeg', 0.85));
+                    const p = doc.addPage([595.28, 841.89]);
+                    p.drawImage(jpg, { x: 0, y: 0, width: 595.28, height: 841.89 });
+                }
+                const bytes = await doc.save();
+                const blob = new Blob([bytes], { type: 'application/pdf' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = nb.name + '.pdf';
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+                showToast('导出完成');
+            } catch (e) {
+                console.error('[nb] 导出失败:', e);
+                showToast('导出失败: ' + e.message);
+            }
+        }
+
+        // 页面合成渲染（导出 / 复习截图共用）
+        async function nbRenderPageToCanvas(page, content, pixW) {
+            const cv = document.createElement('canvas');
+            cv.width = pixW;
+            cv.height = Math.round(pixW * NB_PAGE_H / NB_PAGE_W);
+            const ctx = cv.getContext('2d');
+            const k = pixW / NB_PAGE_W;
+            ctx.setTransform(k, 0, 0, k, 0, 0);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, NB_PAGE_W, NB_PAGE_H);
+            if (page.bgImage) {
+                const data = await nbGetMediaData(page.bgImage);
+                if (data) {
+                    const img = new Image();
+                    await new Promise(res => { img.onload = res; img.onerror = res; img.src = data; });
+                    if (img.width) {
+                        const r = Math.min(NB_PAGE_W / img.width, NB_PAGE_H / img.height);
+                        ctx.drawImage(img, (NB_PAGE_W - img.width * r) / 2, (NB_PAGE_H - img.height * r) / 2, img.width * r, img.height * r);
+                    }
+                }
+            }
+            nbDrawTemplate(ctx, page.template || 'blank');
+            for (const s of (content.strokes || [])) nbDrawStrokeObj(ctx, s);
+            // 图片媒体
+            for (const m of (content.media || [])) {
+                if (m.type !== 'image') continue;
+                const data = await nbGetMediaData(m.mediaId);
+                if (!data) continue;
+                const img = new Image();
+                await new Promise(res => { img.onload = res; img.onerror = res; img.src = data; });
+                if (img.width) ctx.drawImage(img, m.x, m.y, m.w || 240, m.h || 180);
+            }
+            // 文本框
+            for (const t of (content.texts || [])) {
+                ctx.save();
+                ctx.fillStyle = t.color || '#111';
+                ctx.font = `${t.italic ? 'italic ' : ''}${t.bold ? '700 ' : ''}${t.fontSize || 18}px sans-serif`;
+                const lines = String(t.text || '').split('\n');
+                const lh = (t.fontSize || 18) * 1.4;
+                if (t.vertical) {
+                    let colX = t.x + (t.fontSize || 18) / 2;
+                    for (const lineTxt of lines) {
+                        let y = t.y + (t.fontSize || 18);
+                        for (const ch of lineTxt) { ctx.fillText(ch, colX, y); y += lh * 0.85; }
+                        colX -= lh;
+                    }
+                } else {
+                    lines.forEach((lineTxt, li) => ctx.fillText(lineTxt, t.x + 6, t.y + (t.fontSize || 18) + li * lh + 4));
+                }
+                ctx.restore();
+            }
+            return cv;
+        }
+
+        function nbPanelInsert() {
+            return `<h4>插入媒体</h4>
+                <div class="nb-panel-row">
+                    <button class="nb-panel-btn" onclick="document.getElementById('nbImageInput').click();nbHidePanel();">图片</button>
+                    <button class="nb-panel-btn" onclick="document.getElementById('nbAudioInput').click();nbHidePanel();">录音 / 音频</button>
+                </div>`;
+        }
+
+        function nbPanelMore() {
+            return `<h4>更多</h4>
+                <div style="font-size:13px;color:var(--text-muted);padding:6px 2px;">更多功能开发中，敬请期待。</div>`;
+        }
+
+        // ==================== 插入媒体处理 ====================
+        function nbInitFileInputs() {
+            const imgInput = document.getElementById('nbImageInput');
+            if (imgInput && !imgInput._nbBound) {
+                imgInput._nbBound = true;
+                imgInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    e.target.value = '';
+                    if (!file || !nbState.content) return;
+                    const dataUrl = await nbFileToResizedDataUrl(file, 1000);
+                    const mediaId = nbUid('m');
+                    await saveFileData('nbmedia_' + mediaId, dataUrl);
+                    const img = new Image();
+                    await new Promise(res => { img.onload = res; img.onerror = res; img.src = dataUrl; });
+                    const w = Math.min(400, img.width || 240);
+                    const h = img.width ? Math.round(w * img.height / img.width) : 180;
+                    const m = { id: nbUid('md'), type: 'image', mediaId, x: 120, y: 120, w, h };
+                    nbState.content.media.push(m);
+                    nbPushOp({ t: 'madd', m });
+                    nbRenderTexts();
+                    nbScheduleSave();
+                    try { triggerSyncOnFileChange(mediaId, 'notebook_media'); } catch (err) {}
+                });
+            }
+            const audInput = document.getElementById('nbAudioInput');
+            if (audInput && !audInput._nbBound) {
+                audInput._nbBound = true;
+                audInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    e.target.value = '';
+                    if (!file || !nbState.content) return;
+                    if (file.size > 15 * 1024 * 1024) { showToast('音频过大（>15MB）'); return; }
+                    const dataUrl = await new Promise((res, rej) => {
+                        const fr = new FileReader();
+                        fr.onload = () => res(fr.result);
+                        fr.onerror = rej;
+                        fr.readAsDataURL(file);
+                    });
+                    const mediaId = nbUid('m');
+                    await saveFileData('nbmedia_' + mediaId, dataUrl);
+                    const m = { id: nbUid('md'), type: 'audio', mediaId, name: file.name, x: 120, y: 120 };
+                    nbState.content.media.push(m);
+                    nbPushOp({ t: 'madd', m });
+                    nbRenderTexts();
+                    nbScheduleSave();
+                    try { triggerSyncOnFileChange(mediaId, 'notebook_media'); } catch (err) {}
+                });
+            }
+            const pdfInput = document.getElementById('nbPdfInput');
+            if (pdfInput && !pdfInput._nbBound) {
+                pdfInput._nbBound = true;
+                pdfInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    e.target.value = '';
+                    if (file) nbInsertPdf(file);
+                });
+            }
+        }
+        function nbFileToResizedDataUrl(file, maxDim) {
+            return new Promise((resolve, reject) => {
+                const fr = new FileReader();
+                fr.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const r = Math.min(1, maxDim / Math.max(img.width, img.height));
+                        if (r >= 1) { resolve(fr.result); return; }
+                        const cv = document.createElement('canvas');
+                        cv.width = Math.round(img.width * r);
+                        cv.height = Math.round(img.height * r);
+                        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+                        resolve(cv.toDataURL('image/jpeg', 0.85));
+                    };
+                    img.onerror = reject;
+                    img.src = fr.result;
+                };
+                fr.onerror = reject;
+                fr.readAsDataURL(file);
+            });
+        }
+        async function nbInsertPdf(file) {
+            const nb = nbCurrentNotebook();
+            if (!nb || !window.pdfjsLib) { showToast('PDF 渲染器未加载'); return; }
+            nbHidePanel();
+            showToast('正在导入 PDF…');
+            try {
+                if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                const bytes = new Uint8Array(await file.arrayBuffer());
+                const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+                const count = Math.min(pdf.numPages, 60);
+                let at = nbState.pageIndex + 1;
+                const firstAt = at;
+                for (let i = 1; i <= count; i++) {
+                    const pg = await pdf.getPage(i);
+                    const vp0 = pg.getViewport({ scale: 1 });
+                    const scale = 1400 / vp0.width;
+                    const vp = pg.getViewport({ scale });
+                    const cv = document.createElement('canvas');
+                    cv.width = Math.round(vp.width);
+                    cv.height = Math.round(vp.height);
+                    await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+                    const dataUrl = cv.toDataURL('image/jpeg', 0.8);
+                    const mediaId = nbUid('m');
+                    await saveFileData('nbmedia_' + mediaId, dataUrl);
+                    nb.pages.splice(at, 0, { id: nbUid('nbp'), template: 'blank', bgImage: mediaId, createdAt: new Date().toISOString() });
+                    at++;
+                    try { triggerSyncOnFileChange(mediaId, 'notebook_media'); } catch (err) {}
+                    if (i % 5 === 0) showToast(`PDF 导入中 ${i}/${count}…`);
+                }
+                nbTouch(nb);
+                saveData();
+                nbSyncMeta();
+                await nbLoadPage(firstAt);
+                showToast(`已插入 ${count} 页 PDF`);
+            } catch (e) {
+                console.error('[nb] PDF 导入失败:', e);
+                showToast('PDF 导入失败: ' + e.message);
+            }
+        }
+
+        // ==================== 页面大纲 ====================
+        const nbSnippetCache = {};   // pageId -> 摘要文本（仅内存，不入 appData）
+        async function nbToggleOutline() {
+            const el = document.getElementById('nbOutline');
+            if (el.classList.contains('show')) { nbHideOutline(); return; }
+            const nb = nbCurrentNotebook();
+            if (!nb) return;
+            let html = `<h4 style="margin:0;font-size:14px;">页面大纲</h4>
+                <div class="nb-panel-row" style="margin-top:8px;">
+                    <input type="number" id="nbJumpInput" min="1" max="${nb.pages.length}" placeholder="页码" style="width:80px;">
+                    <button class="nb-panel-btn primary" onclick="nbJumpToPage()">跳转</button>
+                </div>
+                <div class="nb-outline-list">`;
+            for (let i = 0; i < nb.pages.length; i++) {
+                const pg = nb.pages[i];
+                let snippet = NB_TEMPLATES[pg.template || 'blank'];
+                try {
+                    if (i === nbState.pageIndex && nbState.content) {
+                        snippet = nbContentSnippet(nbState.content) || snippet;
+                    } else if (nbSnippetCache[pg.id] !== undefined) {
+                        snippet = nbSnippetCache[pg.id] || snippet;
+                    } else {
+                        const raw = await getFileData('nbpage_' + pg.id).catch(() => null);
+                        nbSnippetCache[pg.id] = raw ? nbContentSnippet(JSON.parse(raw)) : '';
+                        snippet = nbSnippetCache[pg.id] || snippet;
+                    }
+                } catch (e) {}
+                html += `<div class="nb-outline-item ${i === nbState.pageIndex ? 'current' : ''}" onclick="nbLoadPage(${i});nbHideOutline();">
+                    <span>第 ${i + 1} 页</span><span class="snippet">${escapeHtml(String(snippet).slice(0, 16))}</span>
+                </div>`;
+            }
+            html += '</div>';
+            el.innerHTML = html;
+            el.classList.add('show');
+            const inp = document.getElementById('nbJumpInput');
+            inp?.addEventListener('keydown', (e) => { if (e.key === 'Enter') nbJumpToPage(); });
+        }
+        function nbContentSnippet(c) {
+            const t = (c.texts || []).map(x => x.text).filter(Boolean).join(' ');
+            if (t) return t;
+            if (c.recognized && c.recognized.text) return c.recognized.text;
+            const n = (c.strokes || []).length;
+            return n ? `${n} 笔` : '';
+        }
+        function nbJumpToPage() {
+            const v = parseInt(document.getElementById('nbJumpInput')?.value, 10);
+            const nb = nbCurrentNotebook();
+            if (!nb || isNaN(v)) return;
+            nbLoadPage(Math.min(Math.max(1, v), nb.pages.length) - 1);
+            nbHideOutline();
+        }
+        function nbHideOutline() {
+            document.getElementById('nbOutline')?.classList.remove('show');
+        }
+
+        // ==================== 搜索（含手写识别索引） ====================
+        function nbPanelSearch() {
+            return `<h4>搜索本笔记本</h4>
+                <div class="nb-panel-row">
+                    <input type="text" id="nbSearchInput" placeholder="搜索文字 / 手写内容" style="flex:1;" onkeydown="if(event.key==='Enter')nbDoSearch()">
+                    <button class="nb-panel-btn primary" onclick="nbDoSearch()">搜索</button>
+                </div>
+                <div class="nb-panel-row">
+                    <button class="nb-panel-btn" onclick="nbBuildHandwritingIndex()">AI 识别手写建立索引</button>
+                </div>
+                <div id="nbSearchResults" style="max-height:40vh;overflow-y:auto;"></div>`;
+        }
+        async function nbDoSearch() {
+            const q = (document.getElementById('nbSearchInput')?.value || '').trim().toLowerCase();
+            const out = document.getElementById('nbSearchResults');
+            if (!q) { out.innerHTML = ''; return; }
+            const nb = nbCurrentNotebook();
+            if (!nb) return;
+            await nbSavePageNow();
+            out.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">搜索中…</div>';
+            const hits = [];
+            for (let i = 0; i < nb.pages.length; i++) {
+                const pg = nb.pages[i];
+                let c = (i === nbState.pageIndex && nbState.content) ? nbState.content : null;
+                if (!c) {
+                    try {
+                        const raw = await getFileData('nbpage_' + pg.id);
+                        c = raw ? JSON.parse(raw) : null;
+                    } catch (e) {}
+                }
+                if (!c) continue;
+                const hay = [
+                    ...(c.texts || []).map(t => t.text || ''),
+                    (c.recognized && c.recognized.text) || '',
+                    ...(c.media || []).map(m => m.name || '')
+                ].join('\n');
+                const pos = hay.toLowerCase().indexOf(q);
+                if (pos >= 0) {
+                    const ctxStr = hay.slice(Math.max(0, pos - 14), pos + q.length + 20).replace(/\n/g, ' ');
+                    hits.push({ i, ctxStr });
+                }
+            }
+            out.innerHTML = hits.length
+                ? hits.map(h => `<div class="nb-outline-item" onclick="nbLoadPage(${h.i});nbHidePanel();">
+                       <span>第 ${h.i + 1} 页</span><span class="snippet">${escapeHtml(h.ctxStr)}</span></div>`).join('')
+                : `<div style="font-size:12px;color:var(--text-muted);">无结果。手写内容需先点「AI 识别手写建立索引」。</div>`;
+        }
+        function nbStrokeSig(c) {
+            const n = (c.strokes || []).length;
+            return n + ':' + (n ? c.strokes[n - 1].id : '');
+        }
+        async function nbBuildHandwritingIndex() {
+            const nb = nbCurrentNotebook();
+            if (!nb) return;
+            await nbSavePageNow();
+            let done = 0, skipped = 0;
+            showToast('开始识别手写内容…');
+            for (let i = 0; i < nb.pages.length; i++) {
+                const pg = nb.pages[i];
+                let c;
+                try {
+                    const raw = await getFileData('nbpage_' + pg.id);
+                    c = raw ? JSON.parse(raw) : null;
+                } catch (e) { c = null; }
+                if (!c || !(c.strokes || []).some(s => s.tool === 'pen' || s.tool === 'hl')) { skipped++; continue; }
+                const sig = nbStrokeSig(c);
+                if (c.recognized && c.recognized.sig === sig) { skipped++; continue; }
+                try {
+                    const cv = await nbRenderPageToCanvas(pg, c, 1000);
+                    const text = await callAI(
+                        '你是手写笔记识别助手。识别页面图片中的全部手写与文字内容，输出纯文本，数学公式用 LaTeX。只输出内容本身。',
+                        [{ role: 'user', content: [
+                            { type: 'image_url', image_url: { url: cv.toDataURL('image/jpeg', 0.8) } },
+                            { type: 'text', text: '识别本页内容用于搜索索引。' }
+                        ] }]
+                    );
+                    c.recognized = { text, sig, at: new Date().toISOString() };
+                    nbSnippetCache[pg.id] = undefined;
+                    await saveFileData('nbpage_' + pg.id, JSON.stringify(c));
+                    if (i === nbState.pageIndex && nbState.content) nbState.content.recognized = c.recognized;
+                    done++;
+                    showToast(`识别中 ${done} 页完成…`);
+                } catch (e) {
+                    console.error('[nb] 手写识别失败:', e);
+                    showToast('识别中断: ' + e.message);
+                    break;
+                }
+            }
+            showToast(`索引完成：新识别 ${done} 页`);
+        }
+
+        // ==================== 复习（间隔重复） ====================
+        const NB_STAGE_OFFSETS = [0, 2, 4, 7, 21];                       // 距创建日的天数
+        const NB_STAGE_NAMES = ['当晚', '2天后', '4天后', '7天后', '21天后'];
+        const NB_STAGE_GAPS = [2, 2, 3, 14, 9];                          // 逾期加练阈值（相对 dueAt 天数）
+        const NB_INVALID_DAYS = 30;                                      // 超过一个月未复习 → 失效
+
+        function nbAt20(d) {
+            const x = new Date(d);
+            x.setHours(20, 0, 0, 0);
+            return x;
+        }
+        function nbAddDays(d, n) {
+            const x = new Date(d);
+            x.setDate(x.getDate() + n);
+            return x;
+        }
+        function nbStageDue(review, stage) {
+            if (stage === 0) {
+                const tonight = nbAt20(new Date());
+                return (tonight.getTime() > Date.now() ? tonight : new Date()).toISOString();
+            }
+            const planned = nbAt20(nbAddDays(new Date(review.createdAt), NB_STAGE_OFFSETS[stage]));
+            const minDue = nbAt20(nbAddDays(new Date(), 1));   // 至少留到明晚
+            return new Date(Math.max(planned.getTime(), minDue.getTime())).toISOString();
+        }
+        function nbFindReviewForPage(pageId) {
+            return nbData().reviews.find(r => r.pageId === pageId);
+        }
+        function nbTouchReview(r) { r.updatedAt = new Date().toISOString(); }
+
+        // 逾期规则：dueAt + gap 天未完成 → 加一次单次加练；dueAt + 30 天未完成 → 失效
+        function nbRefreshReviewStates() {
+            const now = Date.now();
+            let changed = false;
+            for (const r of nbData().reviews) {
+                if (r.status !== 'pending' || !r.dueAt) continue;
+                const due = Date.parse(r.dueAt);
+                if (isNaN(due)) continue;
+                if (now > due + NB_INVALID_DAYS * 86400000) {
+                    r.status = 'invalid';
+                    nbTouchReview(r);
+                    changed = true;
+                    continue;
+                }
+                const gap = NB_STAGE_GAPS[Math.min(r.stage, NB_STAGE_GAPS.length - 1)];
+                const flagKey = r.stage + ':' + (r.quizzes || []).length;
+                if (now > due + gap * 86400000) {
+                    if (!r.extraFlags) r.extraFlags = {};
+                    if (!r.extraFlags[flagKey]) {
+                        r.extraFlags[flagKey] = true;
+                        r.extra = (r.extra || 0) + 1;
+                        nbTouchReview(r);
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) { saveData(); nbSyncMeta(); }
+        }
+
+        function nbReviewPageLabelPlain(r) {
+            const nb = nbGetNotebook(r.notebookId);
+            if (!nb) return '已删除的笔记本';
+            const idx = (nb.pages || []).findIndex(p => p.id === r.pageId);
+            return nb.name + ' · ' + (idx >= 0 ? '第 ' + (idx + 1) + ' 页' : '页面已删除');
+        }
+        function nbReviewPageLabel(r) { return escapeHtml(nbReviewPageLabelPlain(r)); }
+        function nbFmtDT(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+        function nbFmtRemain(ms) {
+            if (ms <= 0) return '0小时';
+            const days = Math.floor(ms / 86400000);
+            const hours = Math.floor((ms % 86400000) / 3600000);
+            return (days ? days + '天' : '') + hours + '小时';
+        }
+
+        // 复习列表：按时间排序，已过期在顶部并显示失效前剩余时间
+        function renderNbReviewList() {
+            const el = document.getElementById('nbReviewList');
+            if (!el) return;
+            const reviews = nbData().reviews.slice();
+            document.getElementById('nbReviewCount').textContent = reviews.filter(r => r.status === 'pending').length;
+            if (!reviews.length) {
+                el.innerHTML = '<div class="empty-state"><p>在笔记本内点击「加入复习」<br>AI 将生成间隔复习 Quiz</p></div>';
+                return;
+            }
+            const now = Date.now();
+            const groupOf = (r) => {
+                if (r.status === 'pending') return (Date.parse(r.dueAt) < now) ? 0 : 1;
+                if (r.status === 'generating') return 2;
+                if (r.status === 'invalid') return 3;
+                return 4;   // completed
+            };
+            reviews.sort((a, b) => {
+                const g = groupOf(a) - groupOf(b);
+                if (g) return g;
+                return (Date.parse(a.dueAt || a.updatedAt || 0) || 0) - (Date.parse(b.dueAt || b.updatedAt || 0) || 0);
+            });
+            el.innerHTML = reviews.map(r => {
+                const label = nbReviewPageLabel(r);
+                const stageName = NB_STAGE_NAMES[Math.min(r.stage, 4)];
+                const lastQuiz = (r.quizzes || [])[(r.quizzes || []).length - 1];
+                const isExtra = lastQuiz && lastQuiz.extra && !lastQuiz.completedAt;
+                let cls = '', badges = '', meta = '';
+                if (r.status === 'pending') {
+                    const due = Date.parse(r.dueAt);
+                    const overdue = due < now;
+                    cls = overdue ? 'overdue' : '';
+                    badges = `<span class="nb-review-badge blue">${stageName}${isExtra ? ' · 加练' : ''}</span>`;
+                    if (r.genFailed) badges += '<span class="nb-review-badge red">生成失败 · 点击重试</span>';
+                    if (overdue) {
+                        const remain = due + NB_INVALID_DAYS * 86400000 - now;
+                        badges += `<span class="nb-review-badge red">已过期</span>`;
+                        meta = `<span>应于 ${nbFmtDT(r.dueAt)} 复习</span><span style="color:#dc2626;">剩余 ${nbFmtRemain(remain)} 失效</span>`;
+                    } else {
+                        meta = `<span>计划 ${nbFmtDT(r.dueAt)}</span>`;
+                    }
+                    if (r.extra > 0) badges += `<span class="nb-review-badge">待加练 ×${r.extra}</span>`;
+                } else if (r.status === 'generating') {
+                    badges = '<span class="nb-review-badge blue">Quiz 生成中…</span>';
+                    if (r.genFailed) badges = '<span class="nb-review-badge red">生成失败 · 点击重试</span>';
+                } else if (r.status === 'invalid') {
+                    cls = 'invalid';
+                    badges = '<span class="nb-review-badge red">已失效</span>';
+                    meta = '<span>间隔超过一个月未复习，点击重新开始</span>';
+                } else {
+                    cls = 'done';
+                    badges = '<span class="nb-review-badge green">复习完成 ✓</span>';
+                    meta = `<span>完成于 ${nbFmtDT(r.updatedAt)}</span>`;
+                }
+                return `<div class="nb-review-card ${cls}" onclick="nbOpenReview('${r.id}')">
+                    <div class="nb-review-title">${label}</div>
+                    <div class="nb-review-meta">${badges}${meta}</div>
+                </div>`;
+            }).join('') + '<div style="min-height:80px;"></div>';
+        }
+
+        // ---------- 加入复习按钮（编辑器左栏） ----------
+        function nbUpdateReviewBtn() {
+            const page = nbCurrentPage();
+            const btn = document.getElementById('nbReviewBtn');
+            const label = document.getElementById('nbReviewBtnLabel');
+            if (!page || !btn) return;
+            const r = nbFindReviewForPage(page.id);
+            btn.classList.remove('review-done');
+            if (!r) label.textContent = '加入复习';
+            else if (r.status === 'completed') { label.textContent = '复习完成'; btn.classList.add('review-done'); }
+            else if (r.status === 'generating') label.textContent = r.genFailed ? '重试生成' : '生成中…';
+            else if (r.status === 'invalid') label.textContent = '已失效';
+            else label.textContent = '复习中';
+        }
+
+        async function nbReviewBtnClick() {
+            const page = nbCurrentPage();
+            if (!page) return;
+            const r = nbFindReviewForPage(page.id);
+            if (!r) {
+                await nbAddToReview(page);
+            } else if (r.status === 'completed') {
+                if (confirm('该页已完成全部复习。重新开始复习流程？')) nbRestartReview(r);
+            } else if (r.status === 'invalid') {
+                if (confirm('复习已失效（间隔超过一个月）。从头开始复习流程？')) nbRestartReview(r);
+            } else if (r.status === 'generating') {
+                if (r.genFailed) nbRetryGeneration(r);
+                else showToast('Quiz 生成中，请稍候…');
+            } else {
+                nbOpenReview(r.id);
+            }
+        }
+
+        // 点击「加入复习」：记录时间，页面发给 AI 生成当晚 quiz，排入复习计划
+        async function nbAddToReview(page) {
+            await nbSavePageNow();
+            const now = new Date().toISOString();
+            const r = {
+                id: nbUid('rev'),
+                notebookId: nbState.notebookId,
+                pageId: page.id,
+                createdAt: now,          // 点击「加入复习」的时间
+                updatedAt: now,
+                stage: 0,
+                dueAt: nbStageDue({ createdAt: now }, 0),
+                status: 'generating',
+                genFailed: false,
+                extra: 0,
+                extraFlags: {},
+                quizzes: []
+            };
+            nbData().reviews.push(r);
+            saveData();
+            nbUpdateReviewBtn();
+            nbSyncMeta();
+            showToast('已加入复习，正在生成当晚 Quiz…');
+            nbGenerateQuiz(r, 0, false, r.dueAt);
+        }
+
+        function nbRestartReview(r) {
+            const now = new Date().toISOString();
+            r.createdAt = now;
+            r.updatedAt = now;
+            r.stage = 0;
+            r.dueAt = nbStageDue({ createdAt: now }, 0);
+            r.status = 'generating';
+            r.genFailed = false;
+            r.extra = 0;
+            r.extraFlags = {};
+            r.quizzes = [];
+            saveData();
+            nbUpdateReviewBtn();
+            renderNbReviewList();
+            nbSyncMeta();
+            showToast('复习流程已重新开始，正在生成当晚 Quiz…');
+            nbGenerateQuiz(r, 0, false, r.dueAt);
+        }
+
+        function nbRetryGeneration(r) {
+            const pg = r.pendingGen;
+            if (!pg) { r.status = 'pending'; saveData(); return; }
+            showToast('重新生成 Quiz…');
+            nbGenerateQuiz(r, pg.stage, pg.extra, pg.dueAt);
+        }
+
+        async function nbCaptureReviewImage(r) {
+            const nb = nbGetNotebook(r.notebookId);
+            if (!nb) return null;
+            const page = (nb.pages || []).find(p => p.id === r.pageId);
+            if (!page) return null;
+            try {
+                const content = (nbCurrentPage() && nbCurrentPage().id === page.id && nbState.content)
+                    ? nbState.content : await nbLoadPageContent(page.id);
+                const cv = await nbRenderPageToCanvas(page, content, 1000);
+                return cv.toDataURL('image/jpeg', 0.85);
+            } catch (e) {
+                console.error('[nb] 页面截图失败:', e);
+                return null;
+            }
+        }
+
+        async function nbGenerateQuiz(r, stage, isExtra, dueAt) {
+            r.status = 'generating';
+            r.genFailed = false;
+            r.pendingGen = { stage, extra: !!isExtra, dueAt };
+            nbTouchReview(r);
+            saveData();
+            renderNbReviewList();
+            nbUpdateReviewBtn();
+            try {
+                const img = await nbCaptureReviewImage(r);
+                const prevQuiz = (r.quizzes || []).slice(-1)[0];
+                const sys = '你是一位数学学习教练，擅长根据学生笔记设计基于间隔重复的复习测验（quiz）。输出用 Markdown，数学公式用 LaTeX（$...$ 与 $$...$$）。';
+                let task;
+                if (isExtra) {
+                    task = '学生上一阶段复习拖延了，需要一次额外的巩固加练。请基于这页数学笔记出一份 5 分钟内能完成的巩固 quiz（3-4 道小题，以基础巩固为主），最后用"---"分隔附上简短参考答案。';
+                } else if (stage === 0) {
+                    task = '这是学生今天记的数学笔记。请生成一份「当晚复习」quiz：5 分钟内可完成，3-5 道小题（概念回顾、基础计算、一道稍有挑战的题），紧扣笔记内容。最后用"---"分隔附上简短参考答案。';
+                } else {
+                    task = `这是学生 ${NB_STAGE_OFFSETS[stage]} 天前学习的数学笔记，本次是第 ${stage + 1} 次间隔复习（${NB_STAGE_NAMES[stage]}）。请生成一份比上次更进阶的 quiz：5 分钟内可完成，3-5 道小题，包含变式、综合应用或迁移题。最后用"---"分隔附上简短参考答案。`;
+                    if (prevQuiz && prevQuiz.content) task += '\n\n上次的 quiz 如下（请避免重复、难度递进）：\n' + String(prevQuiz.content).slice(0, 1500);
+                }
+                const content = [];
+                if (img) content.push({ type: 'image_url', image_url: { url: img } });
+                else if (nbState.content && nbState.content.recognized) task += '\n\n笔记内容（识别文本）：\n' + nbState.content.recognized.text;
+                content.push({ type: 'text', text: task });
+                const quizText = await callAI(sys, [{ role: 'user', content }]);
+                r.quizzes.push({
+                    stage, extra: !!isExtra, content: quizText,
+                    generatedAt: new Date().toISOString(), dueAt, completedAt: null
+                });
+                r.dueAt = dueAt;
+                r.status = 'pending';
+                delete r.pendingGen;
+                nbTouchReview(r);
+                saveData();
+                renderNbReviewList();
+                nbUpdateReviewBtn();
+                nbSyncMeta();
+                showToast('复习 Quiz 已生成（' + (isExtra ? '加练' : NB_STAGE_NAMES[stage]) + '）');
+            } catch (e) {
+                console.error('[nb] Quiz 生成失败:', e);
+                r.genFailed = true;
+                nbTouchReview(r);
+                saveData();
+                renderNbReviewList();
+                nbUpdateReviewBtn();
+                showToast('Quiz 生成失败: ' + e.message);
+            }
+        }
+
+        // ---------- 复习列表点击 → 打开 quiz ----------
+        function nbOpenReview(id) {
+            const r = nbData().reviews.find(x => x.id === id);
+            if (!r) return;
+            if (r.status === 'invalid') {
+                if (confirm('该复习已失效（间隔超过一个月）。从头开始复习流程？')) nbRestartReview(r);
+                return;
+            }
+            if (r.status === 'generating') {
+                if (r.genFailed) nbRetryGeneration(r);
+                else showToast('Quiz 生成中，请稍候…');
+                return;
+            }
+            if (r.status === 'completed') {
+                const last = (r.quizzes || []).slice(-1)[0];
+                nbShowQuiz(r, last, true);
+                return;
+            }
+            const quiz = (r.quizzes || []).slice(-1)[0];
+            if (!quiz) { nbRetryGeneration(r); return; }
+            nbShowQuiz(r, quiz, false);
+        }
+
+        function nbShowQuiz(r, quiz, readOnly) {
+            if (!quiz) return;
+            const stageName = quiz.extra ? '巩固加练' : NB_STAGE_NAMES[Math.min(quiz.stage, 4)];
+            document.getElementById('nbQuizTitle').textContent = nbReviewPageLabelPlain(r) + ' · ' + stageName + ' Quiz';
+            const body = document.getElementById('nbQuizBody');
+            body.innerHTML = renderChatMarkdownLatex(quiz.content || '');
+            delete body.dataset.raw;
+            try { renderLectureMath(body); } catch (e) {}
+            let foot = '';
+            if (!readOnly) {
+                foot += `<button class="nb-panel-btn primary" onclick="nbCompleteQuiz('${r.id}')">完成本次复习</button>`;
+            } else {
+                foot += `<span style="font-size:12px;color:var(--text-muted);margin-right:auto;align-self:center;">全部复习已完成 ✓</span>`;
+            }
+            foot += `<button class="nb-panel-btn" onclick="nbGoToReviewPage('${r.id}')">打开笔记页</button>`;
+            foot += `<button class="nb-panel-btn" onclick="nbHideQuiz()">关闭</button>`;
+            document.getElementById('nbQuizFoot').innerHTML = foot;
+            document.getElementById('nbQuizModal').classList.add('show');
+        }
+        function nbHideQuiz() {
+            document.getElementById('nbQuizModal').classList.remove('show');
+        }
+        function nbGoToReviewPage(id) {
+            const r = nbData().reviews.find(x => x.id === id);
+            if (!r) return;
+            const nb = nbGetNotebook(r.notebookId);
+            if (!nb) { showToast('笔记本已删除'); return; }
+            const idx = (nb.pages || []).findIndex(p => p.id === r.pageId);
+            if (idx < 0) { showToast('页面已删除'); return; }
+            nbHideQuiz();
+            nbOpenNotebook(nb.id, idx);
+        }
+
+        // 完成当前 quiz：有待加练 → 生成加练；否则进入下一阶段；21天后完成 → 复习完成
+        function nbCompleteQuiz(id) {
+            const r = nbData().reviews.find(x => x.id === id);
+            if (!r) return;
+            const quiz = (r.quizzes || []).slice(-1)[0];
+            if (!quiz || quiz.completedAt) { nbHideQuiz(); return; }
+            quiz.completedAt = new Date().toISOString();
+            nbHideQuiz();
+            if ((r.extra || 0) > 0) {
+                r.extra--;
+                const due = nbStageDue({ createdAt: new Date().toISOString() }, 0);   // 加练：当晚
+                nbTouchReview(r);
+                saveData();
+                showToast('已完成，正在生成巩固加练 Quiz…');
+                nbGenerateQuiz(r, r.stage, true, due);
+            } else if (r.stage < 4) {
+                r.stage++;
+                const due = nbStageDue(r, r.stage);
+                nbTouchReview(r);
+                saveData();
+                showToast(`已完成，正在生成${NB_STAGE_NAMES[r.stage]}的进阶 Quiz…`);
+                nbGenerateQuiz(r, r.stage, false, due);
+            } else {
+                r.status = 'completed';
+                nbTouchReview(r);
+                saveData();
+                renderNbReviewList();
+                nbUpdateReviewBtn();
+                nbSyncMeta();
+                showToast('🎉 全部复习完成！');
+            }
+        }
+
+        // ==================== 初始化 ====================
+        (function nbInit() {
+            const boot = () => {
+                nbInitCanvasEvents();
+                nbInitFileInputs();
+                nbRenderBrushBtns();
+                window.addEventListener('resize', () => {
+                    if (document.getElementById('nbEditor').classList.contains('show')) nbLayout();
+                });
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'hidden') nbSavePageNow();
+                });
+                window.addEventListener('beforeunload', () => { nbSavePageNow(); });
+                // 每小时刷新一次逾期状态
+                setInterval(() => {
+                    nbRefreshReviewStates();
+                    if (document.getElementById('page7').classList.contains('active')) renderNbReviewList();
+                }, 3600000);
+            };
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+            else boot();
+        })();
+
     </script>
 </body>
 </html>
